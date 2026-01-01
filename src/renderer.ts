@@ -325,9 +325,6 @@ const terminal = new Terminal({
   fontFamily: "monospace",
   fontSize: 13,
   lineHeight: 1.25,
-  theme: {
-    background: "#000000",
-  },
 });
 
 const fitAddon = new FitAddon();
