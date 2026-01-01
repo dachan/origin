@@ -1,8 +1,8 @@
 {
-  "name": "origin",
-  "productName": "origin",
-  "version": "1.0.0",
-  "description": "My Electron application description",
+  "name": "Origin",
+  "productName": "Origin",
+  "version": "0.9.0",
+  "description": "A modern terminal replacement built with Electron, featuring intelligent command autocomplete and pinned commands.",
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "electron-forge start",
