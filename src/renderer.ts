@@ -32,6 +32,7 @@ let selectedIndex = -1;
 let autocompleteVisible = false;
 let showClearOption = false;
 let showNoResults = false;
+let showEmptyPinned = false;
 let terminalRef: import("@xterm/xterm").Terminal | null = null;
 
 // Read current command from terminal buffer (after prompt)
@@ -74,18 +75,22 @@ document.body.appendChild(autocompleteEl);
 autocompleteEl.addEventListener("click", (e) => {
   const target = e.target as HTMLElement;
 
-  // Handle pin button click
-  if (target.classList.contains("suggestion-pin")) {
+  // Handle pin button click (use closest to handle clicks on SVG children)
+  const pinButton = target.closest(".suggestion-pin") as HTMLElement | null;
+  if (pinButton) {
     e.stopPropagation();
-    const index = parseInt(target.dataset.index || "0");
+    const index = parseInt(pinButton.dataset.index || "0");
     togglePin(index);
     return;
   }
 
-  // Handle delete button click
-  if (target.classList.contains("suggestion-delete")) {
+  // Handle delete button click (use closest to handle clicks on SVG children)
+  const deleteButton = target.closest(
+    ".suggestion-delete"
+  ) as HTMLElement | null;
+  if (deleteButton) {
     e.stopPropagation();
-    const index = parseInt(target.dataset.index || "0");
+    const index = parseInt(deleteButton.dataset.index || "0");
     deleteSuggestion(index);
     return;
   }
@@ -132,6 +137,7 @@ function updateSuggestions(input: string) {
   selectedIndex = -1;
   showClearOption = true; // Always show clear option when line has content
   showNoResults = pinnedSuggestions.length === 0 && filtered.length === 0;
+  showEmptyPinned = false;
   renderSuggestions();
 }
 
@@ -144,6 +150,17 @@ function showPinnedOverlay() {
   selectedIndex = -1;
   showClearOption = true;
   showNoResults = false;
+  showEmptyPinned = false;
+  renderSuggestions();
+}
+
+function showEmptyPinnedOverlay() {
+  pinnedSuggestions = [];
+  suggestions = [];
+  selectedIndex = -1;
+  showClearOption = false;
+  showNoResults = false;
+  showEmptyPinned = true;
   renderSuggestions();
 }
 
@@ -168,6 +185,11 @@ function renderSuggestions() {
     ? `<div class="suggestion no-results"><span class="suggestion-text">No suggestions found</span></div>`
     : "";
 
+  // Build empty pinned message if needed
+  const emptyPinnedHtml = showEmptyPinned
+    ? `<div class="suggestion no-results"><span class="suggestion-text">No pinned commands</span></div>`
+    : "";
+
   const suggestionsHtml = allSuggestions
     .map((cmd, i) => {
       const adjustedIndex = i + offset;
@@ -185,7 +207,8 @@ function renderSuggestions() {
     })
     .join("");
 
-  autocompleteEl.innerHTML = clearLineHtml + noResultsHtml + suggestionsHtml;
+  autocompleteEl.innerHTML =
+    clearLineHtml + noResultsHtml + emptyPinnedHtml + suggestionsHtml;
 
   autocompleteEl.style.display = "block";
   autocompleteVisible = true;
@@ -206,6 +229,7 @@ function hideSuggestions() {
   selectedIndex = -1;
   showClearOption = false;
   showNoResults = false;
+  showEmptyPinned = false;
 
   // Show cursor again (remove CSS class)
   document.body.classList.remove("overlay-active");
@@ -316,20 +340,17 @@ if (container) {
     const isMac = navigator.platform.includes("Mac");
     const modKey = isMac ? event.metaKey : event.ctrlKey;
 
-    // ArrowUp when no overlay visible: show pinned overlay and let shell navigate history
+    // ArrowUp when no overlay visible: let shell navigate history, then show suggestions
     if (
       event.type === "keydown" &&
       event.key === "ArrowUp" &&
       !autocompleteVisible
     ) {
-      if (pinnedCommands.length > 0) {
-        showPinnedOverlay();
-      }
-      // Let shell handle history, then read what's on the line
+      // Let shell handle history, then read what's on the line and show overlay
       setTimeout(() => {
         const lineContent = getCurrentLineContent();
         currentInput = lineContent;
-        if (lineContent && autocompleteVisible) {
+        if (lineContent) {
           updateSuggestions(lineContent);
         }
       }, 10);
@@ -352,6 +373,9 @@ if (container) {
       } else if (pinnedCommands.length > 0) {
         // Empty line: show just pinned
         showPinnedOverlay();
+      } else {
+        // No pinned commands and empty line: show empty state
+        showEmptyPinnedOverlay();
       }
       // Enter selection mode
       selectedIndex = 0;
@@ -392,14 +416,10 @@ if (container) {
           return false;
         }
         // selectedIndex === -1: pass to shell for history navigation
-        // Show pinned overlay and let shell navigate
-        if (pinnedCommands.length > 0) {
-          showPinnedOverlay();
-        }
         setTimeout(() => {
           const lineContent = getCurrentLineContent();
           currentInput = lineContent;
-          if (lineContent && autocompleteVisible) {
+          if (lineContent) {
             updateSuggestions(lineContent);
           }
         }, 10);
