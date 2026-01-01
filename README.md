@@ -24,18 +24,17 @@ Delete commands from your shell history directly from the autocomplete overlay. 
 
 Navigate entirely with the keyboard:
 
-| Shortcut | Action |
-|----------|--------|
-| `↓` | Open autocomplete / Navigate down |
-| `↑` | Navigate up / Shell history |
-| `Enter` | Select suggestion / Execute command |
-| `Esc` | Close autocomplete |
-| `Esc` `Esc` | Clear terminal screen |
-| `⌘+C` | Copy selection (or SIGINT if no selection) |
-| `⌘+V` | Paste from clipboard |
-| `⌘+X` | Cut selection |
-| `Shift+Delete` | Delete word backwards |
-| `Delete` | Remove selected command from history |
+| Shortcut       | Action                                     |
+| -------------- | ------------------------------------------ |
+| `↓`            | Open autocomplete / Navigate down          |
+| `↑`            | Navigate up / Shell history                |
+| `Enter`        | Select suggestion / Execute command        |
+| `Esc`          | Close autocomplete                         |
+| `Esc` `Esc`    | Clear terminal screen                      |
+| `⌘+C`          | Copy selection (or SIGINT if no selection) |
+| `⌘+V`          | Paste from clipboard                       |
+| `Shift+Delete` | Delete word backwards                      |
+| `Delete`       | Remove selected command from history       |
 
 ### 🎨 Clean Dark Theme
 
@@ -117,4 +116,3 @@ Commands you execute in Origin are saved back to your shell's history file, keep
 ## License
 
 MIT © David Chan
-

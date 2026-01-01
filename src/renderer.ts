@@ -13,7 +13,6 @@ declare global {
       pasteFromClipboard: () => string;
       ready: () => void;
       getHistory: () => Promise<string[]>;
-      saveHistory: (command: string) => Promise<boolean>;
       deleteHistory: (command: string) => Promise<boolean>;
       getPinned: () => Promise<string[]>;
       togglePinned: (
@@ -581,12 +580,11 @@ if (container) {
     if (data === "\r" || data === "\n") {
       // Enter pressed - add to history and reset input
       if (currentInput.trim()) {
-        const cmd = currentInput.trim();
-        // Add to local history (at the front, remove duplicates)
-        historyCommands = historyCommands.filter((c) => c !== cmd);
-        historyCommands.unshift(cmd);
-        // Save to shell history file
-        window.electronAPI.saveHistory(cmd);
+        // Add to history (at the front, remove duplicates)
+        historyCommands = historyCommands.filter(
+          (cmd) => cmd !== currentInput.trim()
+        );
+        historyCommands.unshift(currentInput.trim());
       }
       currentInput = "";
       hideSuggestions();
