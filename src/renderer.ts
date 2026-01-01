@@ -416,8 +416,10 @@ if (container) {
       }
 
       // Delete/Backspace when a suggestion is selected - delete from history
+      // (but not Shift+Delete/Backspace, which is used for deleting words)
       if (
         (event.key === "Backspace" || event.key === "Delete") &&
+        !event.shiftKey &&
         selectedIndex >= 0
       ) {
         event.preventDefault();
@@ -466,6 +468,47 @@ if (container) {
         updateSuggestions(currentInput);
       }
       return false;
+    }
+
+    // Shift+Delete: delete word backwards (until whitespace)
+    if (
+      event.type === "keydown" &&
+      (event.key === "Delete" || event.key === "Backspace") &&
+      event.shiftKey
+    ) {
+      // Sync currentInput with actual line content if needed
+      const lineContent = getCurrentLineContent();
+      if (lineContent && currentInput !== lineContent) {
+        currentInput = lineContent;
+      }
+
+      if (currentInput.length > 0) {
+        event.preventDefault();
+        // Find end of word (skip trailing spaces)
+        let endPos = currentInput.length;
+        while (endPos > 0 && currentInput[endPos - 1] === " ") {
+          endPos--;
+        }
+        // Find start of current word
+        let startPos = endPos;
+        while (startPos > 0 && currentInput[startPos - 1] !== " ") {
+          startPos--;
+        }
+        // Skip preceding whitespace to stop at end of previous word
+        while (startPos > 0 && currentInput[startPos - 1] === " ") {
+          startPos--;
+        }
+        const charsToDelete = currentInput.length - startPos;
+
+        if (charsToDelete > 0) {
+          for (let i = 0; i < charsToDelete; i++) {
+            window.electronAPI.sendInput("\x7f");
+          }
+          currentInput = currentInput.slice(0, startPos);
+          updateSuggestions(currentInput);
+        }
+        return false;
+      }
     }
 
     // Delete/Backspace selected text (only when autocomplete is not visible for Delete)
