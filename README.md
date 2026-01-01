@@ -1,5 +1,7 @@
 # Origin
 
+https://github.com/user-attachments/assets/c706c8cf-7ba9-41b0-b375-55e36d966012
+
 A modern terminal replacement built with Electron, featuring intelligent command autocomplete and pinned commands.
 
 ![Origin Terminal](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue)
