@@ -34,6 +34,7 @@ let showClearOption = false;
 let showNoResults = false;
 let showEmptyPinned = false;
 let terminalRef: import("@xterm/xterm").Terminal | null = null;
+let lastEscapeTime = 0;
 
 // Read current command from terminal buffer (after prompt)
 function getCurrentLineContent(): string {
@@ -437,6 +438,12 @@ if (container) {
 
       if (event.key === "Escape") {
         event.preventDefault();
+        const now = Date.now();
+        if (now - lastEscapeTime < 400) {
+          // Double escape - clear terminal (Ctrl+L)
+          window.electronAPI.sendInput("\x0c");
+        }
+        lastEscapeTime = now;
         hideSuggestions();
         return false;
       }
@@ -452,6 +459,17 @@ if (container) {
         deleteSuggestion(selectedIndex);
         return false;
       }
+    }
+
+    // Double-escape to clear terminal (when autocomplete not visible)
+    if (event.type === "keydown" && event.key === "Escape") {
+      const now = Date.now();
+      if (now - lastEscapeTime < 500) {
+        // Double escape - clear terminal (Ctrl+L)
+        window.electronAPI.sendInput("\x0c");
+      }
+      lastEscapeTime = now;
+      return true;
     }
 
     // Copy: Cmd+C (Mac) or Ctrl+Shift+C (non-Mac, to avoid conflict with SIGINT)
@@ -560,7 +578,14 @@ if (container) {
 
     // Track input for autocomplete
     if (data === "\r" || data === "\n") {
-      // Enter pressed - reset input
+      // Enter pressed - add to history and reset input
+      if (currentInput.trim()) {
+        // Add to history (at the front, remove duplicates)
+        historyCommands = historyCommands.filter(
+          (cmd) => cmd !== currentInput.trim()
+        );
+        historyCommands.unshift(currentInput.trim());
+      }
       currentInput = "";
       hideSuggestions();
     } else if (data === "\x7f" || data === "\b") {
