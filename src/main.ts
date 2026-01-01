@@ -9,9 +9,10 @@ if (started) {
 }
 
 let ptyProcess: pty.IPty | null = null;
+let mainWindow: BrowserWindow | null = null;
 
 const createWindow = () => {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
@@ -39,19 +40,24 @@ const createWindow = () => {
 
   // Send pty output to renderer
   ptyProcess.onData((data) => {
-    mainWindow.webContents.send('terminal-data', data);
-  });
-
-  // Handle input from renderer
-  ipcMain.on('terminal-input', (_, data: string) => {
-    ptyProcess?.write(data);
-  });
-
-  // Handle resize from renderer
-  ipcMain.on('terminal-resize', (_, { cols, rows }: { cols: number; rows: number }) => {
-    ptyProcess?.resize(cols, rows);
+    mainWindow?.webContents.send('terminal-data', data);
   });
 };
+
+// IPC handlers - registered once outside createWindow
+ipcMain.on('terminal-input', (_, data: string) => {
+  ptyProcess?.write(data);
+});
+
+ipcMain.on('terminal-resize', (_, { cols, rows }: { cols: number; rows: number }) => {
+  ptyProcess?.resize(cols, rows);
+});
+
+// Clear terminal when renderer is ready (on load/reload)
+ipcMain.on('terminal-ready', () => {
+  // Send Ctrl+L to shell to clear screen and redraw prompt
+  ptyProcess?.write('\x0c');
+});
 
 app.on('ready', createWindow);
 
