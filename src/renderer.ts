@@ -1,33 +1,48 @@
-/**
- * This file will automatically be loaded by vite and run in the "renderer" context.
- * To learn more about the differences between the "main" and the "renderer" context in
- * Electron, visit:
- *
- * https://electronjs.org/docs/tutorial/process-model
- *
- * By default, Node.js integration in this file is disabled. When enabling Node.js integration
- * in a renderer process, please be aware of potential security implications. You can read
- * more about security risks here:
- *
- * https://electronjs.org/docs/tutorial/security
- *
- * To enable Node.js integration in this file, open up `main.ts` and enable the `nodeIntegration`
- * flag:
- *
- * ```
- *  // Create the browser window.
- *  mainWindow = new BrowserWindow({
- *    width: 800,
- *    height: 600,
- *    webPreferences: {
- *      nodeIntegration: true
- *    }
- *  });
- * ```
- */
-
 import './index.css';
+import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import '@xterm/xterm/css/xterm.css';
 
-console.log(
-  '👋 This message is being logged by "renderer.ts", included via Vite',
-);
+declare global {
+  interface Window {
+    electronAPI: {
+      sendInput: (data: string) => void;
+      resize: (cols: number, rows: number) => void;
+      onData: (callback: (data: string) => void) => void;
+    };
+  }
+}
+
+const terminal = new Terminal({
+  cursorBlink: true,
+  fontFamily: 'monospace',
+  fontSize: 14,
+});
+
+const fitAddon = new FitAddon();
+terminal.loadAddon(fitAddon);
+
+const container = document.getElementById('terminal');
+if (container) {
+  terminal.open(container);
+  fitAddon.fit();
+
+  // Send terminal input to main process
+  terminal.onData((data) => {
+    window.electronAPI.sendInput(data);
+  });
+
+  // Receive output from main process
+  window.electronAPI.onData((data) => {
+    terminal.write(data);
+  });
+
+  // Handle window resize
+  window.addEventListener('resize', () => {
+    fitAddon.fit();
+    window.electronAPI.resize(terminal.cols, terminal.rows);
+  });
+
+  // Initial resize notification
+  window.electronAPI.resize(terminal.cols, terminal.rows);
+}

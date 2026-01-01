@@ -37,6 +37,9 @@
     "vite": "^5.4.21"
   },
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.1"
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
+    "electron-squirrel-startup": "^1.0.1",
+    "node-pty": "^1.0.0"
   }
 }
