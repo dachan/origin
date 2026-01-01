@@ -171,7 +171,10 @@ ipcMain.handle('get-history', () => {
 });
 
 ipcMain.handle('delete-history', (_, command: string) => {
-  return deleteFromHistory(command);
+  console.log('Deleting from history:', command);
+  const result = deleteFromHistory(command);
+  console.log('Delete result:', result);
+  return result;
 });
 
 ipcMain.on('terminal-input', (_, data: string) => {

@@ -122,14 +122,15 @@ function selectSuggestion(index: number) {
   hideSuggestions();
 }
 
-function deleteSuggestion(index: number) {
+async function deleteSuggestion(index: number) {
   if (index < 0 || index >= suggestions.length) return;
 
   const toDelete = suggestions[index];
   // Remove from local history
   historyCommands = historyCommands.filter((cmd) => cmd !== toDelete);
   // Remove from file
-  window.electronAPI.deleteHistory(toDelete);
+  const deleted = await window.electronAPI.deleteHistory(toDelete);
+  console.log("Deleted from history file:", toDelete, deleted);
   // Update suggestions
   suggestions.splice(index, 1);
 
