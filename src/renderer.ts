@@ -119,10 +119,8 @@ function updateSuggestions(input: string) {
     return;
   }
 
-  // Filter pinned commands that match
-  pinnedSuggestions = pinnedCommands.filter(
-    (cmd) => cmd.toLowerCase().startsWith(input.toLowerCase()) && cmd !== input
-  );
+  // Always show all pinned commands (except exact match)
+  pinnedSuggestions = pinnedCommands.filter((cmd) => cmd !== input);
 
   // Filter history commands (excluding pinned ones)
   const filtered = historyCommands
