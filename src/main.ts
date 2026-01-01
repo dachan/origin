@@ -5,6 +5,9 @@ import os from 'node:os';
 import started from 'electron-squirrel-startup';
 import * as pty from 'node-pty';
 
+// Set app name for macOS menubar
+app.name = 'Origin';
+
 if (started) {
   app.quit();
 }
