@@ -213,9 +213,49 @@ function deleteFromHistory(command: string): boolean {
   }
 }
 
+// Save a command to shell history file
+function saveToHistory(command: string): boolean {
+  const shell = process.env.SHELL || '';
+  let historyPath = '';
+  
+  if (shell.includes('zsh')) {
+    historyPath = path.join(os.homedir(), '.zsh_history');
+  } else if (shell.includes('bash')) {
+    historyPath = path.join(os.homedir(), '.bash_history');
+  } else if (shell.includes('fish')) {
+    historyPath = path.join(os.homedir(), '.local/share/fish/fish_history');
+  }
+  
+  if (!historyPath) {
+    return false;
+  }
+  
+  try {
+    const timestamp = Math.floor(Date.now() / 1000);
+    let entry = '';
+    
+    if (shell.includes('zsh')) {
+      entry = `: ${timestamp}:0;${command}\n`;
+    } else if (shell.includes('fish')) {
+      entry = `- cmd: ${command}\n  when: ${timestamp}\n`;
+    } else {
+      entry = `${command}\n`;
+    }
+    
+    fs.appendFileSync(historyPath, entry);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // IPC handlers - registered once outside createWindow
 ipcMain.handle('get-history', () => {
   return getShellHistory();
+});
+
+ipcMain.handle('save-history', (_, command: string) => {
+  return saveToHistory(command);
 });
 
 ipcMain.handle('delete-history', (_, command: string) => {

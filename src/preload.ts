@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pasteFromClipboard: () => clipboard.readText(),
   ready: () => ipcRenderer.send('terminal-ready'),
   getHistory: () => ipcRenderer.invoke('get-history') as Promise<string[]>,
+  saveHistory: (command: string) => ipcRenderer.invoke('save-history', command) as Promise<boolean>,
   deleteHistory: (command: string) => ipcRenderer.invoke('delete-history', command) as Promise<boolean>,
   getPinned: () => ipcRenderer.invoke('get-pinned') as Promise<string[]>,
   togglePinned: (command: string) => ipcRenderer.invoke('toggle-pinned', command) as Promise<{ pinned: boolean; commands: string[] }>,
