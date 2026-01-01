@@ -32,6 +32,26 @@ autocompleteEl.id = "autocomplete";
 autocompleteEl.className = "autocomplete-dropdown";
 document.body.appendChild(autocompleteEl);
 
+// Event delegation for autocomplete clicks (prevents memory leak from repeated listener attachment)
+autocompleteEl.addEventListener("click", (e) => {
+  const target = e.target as HTMLElement;
+
+  // Handle delete button click
+  if (target.classList.contains("suggestion-delete")) {
+    e.stopPropagation();
+    const index = parseInt(target.dataset.index || "0");
+    deleteSuggestion(index);
+    return;
+  }
+
+  // Handle suggestion click (check target or parent)
+  const suggestion = target.closest(".suggestion") as HTMLElement | null;
+  if (suggestion) {
+    const index = parseInt(suggestion.dataset.index || "0");
+    selectSuggestion(index);
+  }
+});
+
 // Load history on startup
 window.electronAPI.getHistory().then((history) => {
   historyCommands = history;
@@ -70,23 +90,6 @@ function renderSuggestions() {
       return `<div class="suggestion${isSelected ? " selected" : ""}" data-index="${i}"><span class="suggestion-text">${highlighted}</span><span class="suggestion-delete" data-index="${i}">&times;</span></div>`;
     })
     .join("");
-
-  // Add click handlers for delete buttons
-  autocompleteEl.querySelectorAll(".suggestion-delete").forEach((el) => {
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const index = parseInt((el as HTMLElement).dataset.index || "0");
-      deleteSuggestion(index);
-    });
-  });
-
-  // Add click handlers for suggestions
-  autocompleteEl.querySelectorAll(".suggestion").forEach((el) => {
-    el.addEventListener("click", () => {
-      const index = parseInt((el as HTMLElement).dataset.index || "0");
-      selectSuggestion(index);
-    });
-  });
 
   autocompleteEl.style.display = "block";
   autocompleteVisible = true;

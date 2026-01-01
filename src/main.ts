@@ -18,6 +18,10 @@ const createWindow = () => {
     height: 600,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
     },
   });
 
@@ -137,17 +141,16 @@ function deleteFromHistory(command: string): boolean {
         }
       }
     } else if (shell.includes('fish')) {
+      // Fish history format: entries start with "- cmd:" followed by metadata lines
       let skip = false;
       for (const line of lines) {
         const match = line.match(/^- cmd: (.+)$/);
         if (match) {
+          // New command entry - check if we should skip this one
           skip = match[1] === command;
         }
         if (!skip) {
           filteredLines.push(line);
-        }
-        if (line === '' || line.startsWith('- cmd:')) {
-          skip = false;
         }
       }
     } else {
@@ -182,6 +185,14 @@ ipcMain.on('terminal-input', (_, data: string) => {
 });
 
 ipcMain.on('terminal-resize', (_, { cols, rows }: { cols: number; rows: number }) => {
+  // Validate inputs to prevent crashes
+  if (
+    typeof cols !== 'number' || typeof rows !== 'number' ||
+    !Number.isInteger(cols) || !Number.isInteger(rows) ||
+    cols < 1 || cols > 500 || rows < 1 || rows > 500
+  ) {
+    return;
+  }
   ptyProcess?.resize(cols, rows);
 });
 
