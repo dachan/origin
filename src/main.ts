@@ -9,6 +9,51 @@ if (started) {
   app.quit();
 }
 
+// Pinned commands storage
+function getPinnedPath(): string {
+  return path.join(app.getPath('userData'), 'pinned-commands.json');
+}
+
+function getPinnedCommands(): string[] {
+  try {
+    const pinnedPath = getPinnedPath();
+    if (fs.existsSync(pinnedPath)) {
+      const data = fs.readFileSync(pinnedPath, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {
+    // Ignore errors, return empty array
+  }
+  return [];
+}
+
+function savePinnedCommands(pinned: string[]): boolean {
+  try {
+    const pinnedPath = getPinnedPath();
+    fs.writeFileSync(pinnedPath, JSON.stringify(pinned, null, 2));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function togglePinnedCommand(command: string): { pinned: boolean; commands: string[] } {
+  const pinned = getPinnedCommands();
+  const index = pinned.indexOf(command);
+  if (index >= 0) {
+    pinned.splice(index, 1);
+    savePinnedCommands(pinned);
+    return { pinned: false, commands: pinned };
+  } else {
+    pinned.unshift(command);
+    savePinnedCommands(pinned);
+    return { pinned: true, commands: pinned };
+  }
+}
+
 let ptyProcess: pty.IPty | null = null;
 let mainWindow: BrowserWindow | null = null;
 
@@ -180,6 +225,14 @@ ipcMain.handle('delete-history', (_, command: string) => {
   return result;
 });
 
+ipcMain.handle('get-pinned', () => {
+  return getPinnedCommands();
+});
+
+ipcMain.handle('toggle-pinned', (_, command: string) => {
+  return togglePinnedCommand(command);
+});
+
 ipcMain.on('terminal-input', (_, data: string) => {
   ptyProcess?.write(data);
 });
@@ -198,8 +251,8 @@ ipcMain.on('terminal-resize', (_, { cols, rows }: { cols: number; rows: number }
 
 // Clear terminal when renderer is ready (on load/reload)
 ipcMain.on('terminal-ready', () => {
-  // Send Ctrl+L to shell to clear screen and redraw prompt
-  ptyProcess?.write('\x0c');
+  // Send Ctrl+U to clear current line, then Ctrl+L to clear screen and redraw prompt
+  ptyProcess?.write('\x15\x0c');
 });
 
 app.on('ready', createWindow);
