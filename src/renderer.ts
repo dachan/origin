@@ -177,7 +177,7 @@ function renderSuggestions() {
 
   // Build clear line option if needed
   const clearLineHtml = showClearOption
-    ? `<div class="suggestion clear-line${selectedIndex === 0 ? " selected" : ""}" data-index="0"><span class="suggestion-text">Clear line</span><span class="clear-icon">${backspaceIcon}</span></div>`
+    ? `<div class="suggestion clear-line${selectedIndex === 0 ? " selected" : ""}" data-index="0"><span class="suggestion-text">Clear line (press shift + delete to delete word blocks)</span><span class="clear-icon">${backspaceIcon}</span></div>`
     : "";
 
   // Build no results message if needed
@@ -433,6 +433,12 @@ if (container) {
           return false;
         }
         // Let Enter pass through to execute command
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        hideSuggestions();
+        return false;
       }
 
       // Delete/Backspace when a suggestion is selected - delete from history
