@@ -4,7 +4,15 @@ import { defineConfig } from "vite";
 export default defineConfig({
   build: {
     rollupOptions: {
-      external: ["node-pty"],
+      external: [
+        'electron',
+        'node-pty',
+        /^node:/,
+      ],
     },
+  },
+  resolve: {
+    browserField: false,
+    mainFields: ['module', 'jsnext:main', 'jsnext'],
   },
 });
