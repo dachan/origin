@@ -12,4 +12,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   copyToClipboard: (text: string) => clipboard.writeText(text),
   pasteFromClipboard: () => clipboard.readText(),
   ready: () => ipcRenderer.send('terminal-ready'),
+  getHistory: () => ipcRenderer.invoke('get-history') as Promise<string[]>,
+  deleteHistory: (command: string) => ipcRenderer.invoke('delete-history', command) as Promise<boolean>,
 });

@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import os from 'node:os';
 import started from 'electron-squirrel-startup';
 import * as pty from 'node-pty';
@@ -44,7 +45,135 @@ const createWindow = () => {
   });
 };
 
+// Read shell history file
+function getShellHistory(): string[] {
+  const shell = process.env.SHELL || '';
+  let historyPath = '';
+  
+  if (shell.includes('zsh')) {
+    historyPath = path.join(os.homedir(), '.zsh_history');
+  } else if (shell.includes('bash')) {
+    historyPath = path.join(os.homedir(), '.bash_history');
+  } else if (shell.includes('fish')) {
+    historyPath = path.join(os.homedir(), '.local/share/fish/fish_history');
+  }
+  
+  if (!historyPath || !fs.existsSync(historyPath)) {
+    return [];
+  }
+  
+  try {
+    const content = fs.readFileSync(historyPath, 'utf-8');
+    const lines = content.split('\n');
+    const commands: string[] = [];
+    
+    // Parse based on shell type
+    if (shell.includes('zsh')) {
+      // zsh history format: ": timestamp:0;command" or just "command"
+      for (const line of lines) {
+        const match = line.match(/^: \d+:\d+;(.+)$/);
+        if (match) {
+          commands.push(match[1]);
+        } else if (line && !line.startsWith(':')) {
+          commands.push(line);
+        }
+      }
+    } else if (shell.includes('fish')) {
+      // fish history format: "- cmd: command"
+      for (const line of lines) {
+        const match = line.match(/^- cmd: (.+)$/);
+        if (match) {
+          commands.push(match[1]);
+        }
+      }
+    } else {
+      // bash and others: one command per line
+      for (const line of lines) {
+        if (line.trim()) {
+          commands.push(line);
+        }
+      }
+    }
+    
+    // Return unique commands, most recent first (last 500)
+    const unique = [...new Set(commands.reverse())];
+    return unique.slice(0, 500);
+  } catch {
+    return [];
+  }
+}
+
+// Delete a command from shell history file
+function deleteFromHistory(command: string): boolean {
+  const shell = process.env.SHELL || '';
+  let historyPath = '';
+  
+  if (shell.includes('zsh')) {
+    historyPath = path.join(os.homedir(), '.zsh_history');
+  } else if (shell.includes('bash')) {
+    historyPath = path.join(os.homedir(), '.bash_history');
+  } else if (shell.includes('fish')) {
+    historyPath = path.join(os.homedir(), '.local/share/fish/fish_history');
+  }
+  
+  if (!historyPath || !fs.existsSync(historyPath)) {
+    return false;
+  }
+  
+  try {
+    const content = fs.readFileSync(historyPath, 'utf-8');
+    const lines = content.split('\n');
+    const filteredLines: string[] = [];
+    
+    if (shell.includes('zsh')) {
+      for (const line of lines) {
+        const match = line.match(/^: \d+:\d+;(.+)$/);
+        if (match) {
+          if (match[1] !== command) {
+            filteredLines.push(line);
+          }
+        } else if (line !== command) {
+          filteredLines.push(line);
+        }
+      }
+    } else if (shell.includes('fish')) {
+      let skip = false;
+      for (const line of lines) {
+        const match = line.match(/^- cmd: (.+)$/);
+        if (match) {
+          skip = match[1] === command;
+        }
+        if (!skip) {
+          filteredLines.push(line);
+        }
+        if (line === '' || line.startsWith('- cmd:')) {
+          skip = false;
+        }
+      }
+    } else {
+      for (const line of lines) {
+        if (line !== command) {
+          filteredLines.push(line);
+        }
+      }
+    }
+    
+    fs.writeFileSync(historyPath, filteredLines.join('\n'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // IPC handlers - registered once outside createWindow
+ipcMain.handle('get-history', () => {
+  return getShellHistory();
+});
+
+ipcMain.handle('delete-history', (_, command: string) => {
+  return deleteFromHistory(command);
+});
+
 ipcMain.on('terminal-input', (_, data: string) => {
   ptyProcess?.write(data);
 });
