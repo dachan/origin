@@ -1,8 +1,8 @@
 {
-  "name": "origin-terminal",
-  "productName": "Origin",
+  "name": "origin-sam",
+  "productName": "Origin: SAM",
   "version": "1.0.0",
-  "description": "A standalone terminal replacement with rich text input, autocomplete, and sticky commands",
+  "description": "Origin: SAM — Shell Augmentation Manager",
   "main": ".webpack/main",
   "private": true,
   "scripts": {

@@ -14,8 +14,8 @@ import { rendererConfig } from './webpack.renderer.config';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    name: 'Origin',
-    executableName: 'origin',
+    name: 'Origin SAM',
+    executableName: 'origin-sam',
   },
   rebuildConfig: {},
   makers: [
