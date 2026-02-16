@@ -148,6 +148,42 @@ const CommandInput: React.FC = () => {
         return;
       }
 
+      // --- Shift+Backspace = delete backward to next space or '/' ---
+      if (e.key === 'Backspace' && e.shiftKey) {
+        e.preventDefault();
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        const pos = textarea.selectionStart;
+        if (pos === 0) return;
+
+        const before = inputValue.slice(0, pos);
+        let deleteFrom = pos - 1;
+
+        // Walk backwards to find the next space or '/'
+        while (deleteFrom > 0) {
+          const ch = before[deleteFrom - 1];
+          if (ch === ' ') {
+            // Include the space in the deletion
+            deleteFrom--;
+            break;
+          }
+          if (ch === '/') {
+            // Stop before the '/'
+            break;
+          }
+          deleteFrom--;
+        }
+
+        const newValue = before.slice(0, deleteFrom) + inputValue.slice(pos);
+        setInputValue(newValue);
+        // Set cursor position after React re-render
+        requestAnimationFrame(() => {
+          textarea.selectionStart = deleteFrom;
+          textarea.selectionEnd = deleteFrom;
+        });
+        return;
+      }
+
       // --- Tab without autocomplete = send tab to PTY for shell completion ---
       if (e.key === 'Tab' && !showAutocomplete) {
         e.preventDefault();
