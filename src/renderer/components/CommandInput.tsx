@@ -9,6 +9,7 @@ const CommandInput: React.FC = () => {
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [autocompleteIndex, setAutocompleteIndex] = useState(-1);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const lastEscRef = useRef<number>(0);
 
   const {
     ptyId,
@@ -18,6 +19,7 @@ const CommandInput: React.FC = () => {
     executeCommand,
     filterHistory,
     isRawMode,
+    isPaletteOpen,
   } = useTerminal();
 
   // Auto-resize textarea height
@@ -31,6 +33,20 @@ const CommandInput: React.FC = () => {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // --- Double Escape = clear terminal ---
+      if (e.key === 'Escape') {
+        const now = Date.now();
+        if (now - lastEscRef.current < 250) {
+          e.preventDefault();
+          lastEscRef.current = 0;
+          if (ptyId) {
+            window.electronAPI.ptyWrite(ptyId, 'clear\n');
+          }
+          return;
+        }
+        lastEscRef.current = now;
+      }
+
       // --- Autocomplete navigation ---
       if (showAutocomplete && autocompleteItems.length > 0) {
         if (e.key === 'ArrowDown') {
@@ -185,18 +201,29 @@ const CommandInput: React.FC = () => {
     adjustTextareaHeight();
   }, [inputValue, adjustTextareaHeight]);
 
-  // Keep focus on the textarea when clicking elsewhere (except terminal output)
+  // Always keep focus on the textarea when the app is focused
   useEffect(() => {
-    const handleWindowClick = (e: MouseEvent) => {
-      if (isRawMode) return;
-      const target = e.target as HTMLElement;
-      if (!target.closest('.terminal-output') && !target.closest('.palette-overlay')) {
+    if (isRawMode || isPaletteOpen) return;
+
+    textareaRef.current?.focus();
+
+    const handleFocusIn = (e: FocusEvent) => {
+      if (e.target !== textareaRef.current) {
         textareaRef.current?.focus();
       }
     };
-    window.addEventListener('click', handleWindowClick);
-    return () => window.removeEventListener('click', handleWindowClick);
-  }, [isRawMode]);
+
+    const handleWindowFocus = () => {
+      textareaRef.current?.focus();
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+    window.addEventListener('focus', handleWindowFocus);
+    return () => {
+      document.removeEventListener('focusin', handleFocusIn);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [isRawMode, isPaletteOpen]);
 
   // Don't render in raw mode
   if (isRawMode) return null;

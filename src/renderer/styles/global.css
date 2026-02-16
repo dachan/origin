@@ -19,7 +19,8 @@ body,
   flex-direction: column;
   height: 100vh;
   /* macOS hidden titlebar inset -- draggable area at top */
-  padding-top: 28px;
+  padding: 16px;
+  padding-top: calc(28px + 16px);
 }
 
 /* Draggable title bar region for macOS */

@@ -1,4 +1,6 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, shell } from 'electron';
+import fs from 'fs';
+import path from 'path';
 import { ptyManager } from './pty-manager';
 import { commandHistoryStore } from './persistence/command-history';
 import { stickyCommandsStore, StickyCommand } from './persistence/sticky-commands';
@@ -60,4 +62,46 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('sticky:save', async (_event, commands: StickyCommand[]) => {
     return stickyCommandsStore.save(commands);
   });
+
+  // --- Filesystem Channels ---
+
+  ipcMain.handle(
+    'fs:getCwd',
+    async (_event, ptyId: string): Promise<string | null> => {
+      return ptyManager.getCwd(ptyId);
+    }
+  );
+
+  ipcMain.handle(
+    'fs:resolveTokens',
+    async (
+      _event,
+      { cwd, tokens }: { cwd: string; tokens: string[] }
+    ): Promise<{ name: string; type: 'file' | 'directory' | null }[]> => {
+      const results = await Promise.all(
+        tokens.map(async (token) => {
+          try {
+            const fullPath = path.resolve(cwd, token);
+            const stat = await fs.promises.stat(fullPath);
+            return {
+              name: token,
+              type: (stat.isDirectory() ? 'directory' : 'file') as
+                | 'file'
+                | 'directory',
+            };
+          } catch {
+            return { name: token, type: null };
+          }
+        })
+      );
+      return results;
+    }
+  );
+
+  ipcMain.handle(
+    'fs:openFile',
+    async (_event, filePath: string): Promise<string> => {
+      return shell.openPath(filePath);
+    }
+  );
 }
