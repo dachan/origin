@@ -6,12 +6,14 @@ import { SearchAddon } from '@xterm/addon-search';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 import { useTerminal } from '../context/TerminalContext';
+import { FileSystemLinkProvider } from '../terminal-file-link-provider';
 
 const TerminalOutput: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { ptyId, terminalRef, isRawMode } = useTerminal();
   const fitAddonRef = useRef<FitAddon | null>(null);
   const onDataDisposableRef = useRef<{ dispose: () => void } | null>(null);
+  const ptyIdRef = useRef<string | null>(null);
 
   // Initialize xterm.js terminal
   useEffect(() => {
@@ -19,6 +21,7 @@ const TerminalOutput: React.FC = () => {
 
     const term = new Terminal({
       cursorBlink: false,
+      cursorInactiveStyle: 'none',
       disableStdin: true,
       fontSize: 14,
       fontFamily: "'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
@@ -72,6 +75,11 @@ const TerminalOutput: React.FC = () => {
     terminalRef.current = term;
     fitAddonRef.current = fitAddon;
 
+    // Register file link provider
+    const linkProvider = new FileSystemLinkProvider(ptyIdRef);
+    linkProvider.terminal = term;
+    const linkDisposable = term.registerLinkProvider(linkProvider);
+
     // Handle resize
     const resizeObserver = new ResizeObserver(() => {
       fitAddon.fit();
@@ -82,12 +90,18 @@ const TerminalOutput: React.FC = () => {
     resizeObserver.observe(containerRef.current);
 
     return () => {
+      linkDisposable.dispose();
       resizeObserver.disconnect();
       term.dispose();
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
   }, []);
+
+  // Keep ptyIdRef in sync to avoid stale closures in link provider
+  useEffect(() => {
+    ptyIdRef.current = ptyId;
+  }, [ptyId]);
 
   // Sync PTY resize when ptyId becomes available
   useEffect(() => {

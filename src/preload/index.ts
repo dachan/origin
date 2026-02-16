@@ -61,6 +61,19 @@ const api = {
 
   stickySave: (commands: StickyCommand[]): Promise<void> =>
     ipcRenderer.invoke('sticky:save', commands),
+
+  // Filesystem
+  fsGetCwd: (ptyId: string): Promise<string | null> =>
+    ipcRenderer.invoke('fs:getCwd', ptyId),
+
+  fsResolveTokens: (
+    cwd: string,
+    tokens: string[]
+  ): Promise<{ name: string; type: 'file' | 'directory' | null }[]> =>
+    ipcRenderer.invoke('fs:resolveTokens', { cwd, tokens }),
+
+  fsOpenFile: (filePath: string): Promise<string> =>
+    ipcRenderer.invoke('fs:openFile', filePath),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);

@@ -14,7 +14,10 @@ const CommandPalette: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [pinningCommand, setPinningCommand] = useState<string | null>(null);
+  const [pinLabel, setPinLabel] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const pinInputRef = useRef<HTMLInputElement>(null);
 
   // Build combined list: sticky commands first, then recent history
   const filteredItems = useMemo(() => {
@@ -49,9 +52,17 @@ const CommandPalette: React.FC = () => {
     if (isPaletteOpen) {
       setSearchQuery('');
       setSelectedIndex(0);
+      setPinningCommand(null);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [isPaletteOpen]);
+
+  // Focus pin label input when pinning
+  useEffect(() => {
+    if (pinningCommand !== null) {
+      setTimeout(() => pinInputRef.current?.focus(), 50);
+    }
+  }, [pinningCommand]);
 
   const handleSelect = useCallback(
     (item: (typeof filteredItems)[0]) => {
@@ -90,13 +101,24 @@ const CommandPalette: React.FC = () => {
   const handlePin = useCallback(
     (e: React.MouseEvent, command: string) => {
       e.stopPropagation();
-      const label = window.prompt('Label for this command:', command);
-      if (label) {
-        addStickyCommand(label, command);
-      }
+      setPinningCommand(command);
+      setPinLabel(command);
     },
-    [addStickyCommand]
+    []
   );
+
+  const handlePinConfirm = useCallback(() => {
+    if (pinningCommand && pinLabel.trim()) {
+      addStickyCommand(pinLabel.trim(), pinningCommand);
+    }
+    setPinningCommand(null);
+    setPinLabel('');
+  }, [pinningCommand, pinLabel, addStickyCommand]);
+
+  const handlePinCancel = useCallback(() => {
+    setPinningCommand(null);
+    setPinLabel('');
+  }, []);
 
   const handleUnpin = useCallback(
     (e: React.MouseEvent, id: string) => {
@@ -126,10 +148,31 @@ const CommandPalette: React.FC = () => {
           />
         </div>
         <div className="palette-list">
-          {filteredItems.length === 0 && (
+          {pinningCommand !== null && (
+            <div className="palette-pin-form" onClick={(e) => e.stopPropagation()}>
+              <label className="palette-pin-label">Label for pinned command:</label>
+              <div className="palette-pin-row">
+                <input
+                  ref={pinInputRef}
+                  className="palette-pin-input"
+                  type="text"
+                  value={pinLabel}
+                  onChange={(e) => setPinLabel(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handlePinConfirm();
+                    if (e.key === 'Escape') handlePinCancel();
+                  }}
+                  placeholder="Enter a label..."
+                />
+                <button className="palette-pin-btn" onClick={handlePinConfirm}>Save</button>
+                <button className="palette-pin-btn cancel" onClick={handlePinCancel}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {pinningCommand === null && filteredItems.length === 0 && (
             <div className="palette-empty">No matching commands</div>
           )}
-          {filteredItems.map((item, index) => (
+          {pinningCommand === null && filteredItems.map((item, index) => (
             <div
               key={`${item.type}-${item.id}`}
               className={`palette-item ${index === selectedIndex ? 'selected' : ''} ${item.type === 'sticky' ? 'sticky' : ''}`}
