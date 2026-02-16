@@ -1,0 +1,103 @@
+.terminal-output {
+  flex: 1;
+  overflow: hidden;
+  padding: 4px 4px 0;
+}
+
+/* Override xterm.js viewport to fill container */
+.terminal-output .xterm {
+  height: 100%;
+}
+
+.terminal-output .xterm-viewport {
+  overflow-y: auto !important;
+}
+
+/* Command input area */
+.command-input-container {
+  position: relative;
+  border-top: 1px solid #292e42;
+  background: #1f2335;
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+
+.command-input-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.prompt-indicator {
+  color: #7aa2f7;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 22px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.prompt-arrow {
+  font-weight: bold;
+}
+
+.command-textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #c0caf5;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 22px;
+  resize: none;
+  overflow-y: auto;
+  max-height: 120px;
+  min-height: 22px;
+}
+
+.command-textarea::placeholder {
+  color: #565f89;
+}
+
+.command-textarea::selection {
+  background: #33467c;
+  color: #c0caf5;
+}
+
+/* Autocomplete dropdown -- positioned above the input */
+.autocomplete-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: #24283b;
+  border: 1px solid #292e42;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.autocomplete-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  color: #a9b1d6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.1s ease;
+}
+
+.autocomplete-item.selected {
+  background: #292e42;
+  color: #c0caf5;
+}
+
+.autocomplete-item:hover {
+  background: #292e42;
+}
