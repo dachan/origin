@@ -10,12 +10,15 @@ A modern terminal replacement built with Electron, xterm.js, and React. Origin e
 - GPU-accelerated rendering via WebGL (with DOM fallback)
 - 10,000-line scrollback buffer
 - Clickable URLs detected automatically
+- Adjustable font size (Cmd+=/-, persisted across sessions)
 - Tokyo Night color theme with full 16-color ANSI palette
+- Auto-restarts shell on exit
 
 ### Clickable Files & Directories
 - Hover over filenames in terminal output to see them highlighted
 - Click a **directory** to `cd` into it
 - Click a **file** to open it with the OS default app
+- Hover tooltip shows file size, created date, and modified date
 - Supports filenames with spaces (from `ls` column output)
 - Filters out `ls -l` metadata (permissions, dates, sizes) so only real paths are clickable
 - Links from older `ls` output stay clickable after `cd`ing elsewhere (CWD history tracking)
@@ -26,10 +29,17 @@ A modern terminal replacement built with Electron, xterm.js, and React. Origin e
 - Persistent command history across sessions
 - Syncs with shell history (`~/.zsh_history` / `~/.bash_history`)
 
+### Terminal Search
+- **Cmd+F** to open Find bar
+- Highlights all matches in yellow with dark text
+- Navigate between matches with Enter / Shift+Enter
+- Escape to close
+
 ### Command Palette
-- Quick access to recent and pinned commands
-- Pin frequently used commands with custom labels
+- Quick access to recent and starred commands
+- Star frequently used commands with custom labels
 - Remove individual commands from history
+- Clear all history with one click
 - Search filters both labels and commands
 
 ### Raw Mode
@@ -51,6 +61,10 @@ A modern terminal replacement built with Electron, xterm.js, and React. Origin e
 | **Arrow Up/Down** | Navigate command history |
 | **Cmd+K** | Toggle command palette |
 | **Cmd+Shift+P** | Toggle command palette |
+| **Cmd+F** | Find in terminal |
+| **Cmd+=** | Increase font size |
+| **Cmd+-** | Decrease font size |
+| **Cmd+0** | Reset font size |
 
 ## Getting Started
 
