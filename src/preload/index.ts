@@ -84,6 +84,15 @@ const api = {
 
   fsOpenFile: (filePath: string): Promise<string> =>
     ipcRenderer.invoke('fs:openFile', filePath),
+
+  // Menu events
+  onTogglePassthrough: (callback: () => void): (() => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('terminal:toggle-passthrough', handler);
+    return () => {
+      ipcRenderer.removeListener('terminal:toggle-passthrough', handler);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);

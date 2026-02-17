@@ -4,6 +4,13 @@ import Autocomplete from './Autocomplete';
 import Prompt from './Prompt';
 import { showToast } from './Toast';
 
+// Heroicons: command-line (outline)
+const CommandLineIcon: React.FC = () => (
+  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <path d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z" />
+  </svg>
+);
+
 const CommandInput: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [inputValue, setInputValue] = useState('');
@@ -20,6 +27,8 @@ const CommandInput: React.FC = () => {
     executeCommand,
     filterHistory,
     isRawMode,
+    isPassthroughMode,
+    togglePassthroughMode,
     isPaletteOpen,
     isSearchOpen,
   } = useTerminal();
@@ -228,10 +237,10 @@ const CommandInput: React.FC = () => {
 
   // Auto-focus the textarea
   useEffect(() => {
-    if (!isRawMode) {
+    if (!isRawMode && !isPassthroughMode) {
       textareaRef.current?.focus();
     }
-  }, [isRawMode]);
+  }, [isRawMode, isPassthroughMode]);
 
   // Adjust height when input changes
   useEffect(() => {
@@ -240,7 +249,7 @@ const CommandInput: React.FC = () => {
 
   // Always keep focus on the textarea when the app is focused
   useEffect(() => {
-    if (isRawMode || isPaletteOpen || isSearchOpen) return;
+    if (isRawMode || isPassthroughMode || isPaletteOpen || isSearchOpen) return;
 
     textareaRef.current?.focus();
 
@@ -260,10 +269,10 @@ const CommandInput: React.FC = () => {
       document.removeEventListener('focusin', handleFocusIn);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [isRawMode, isPaletteOpen, isSearchOpen]);
+  }, [isRawMode, isPassthroughMode, isPaletteOpen, isSearchOpen]);
 
-  // Don't render in raw mode
-  if (isRawMode) return null;
+  // Don't render in raw mode or passthrough mode
+  if (isRawMode || isPassthroughMode) return null;
 
   return (
     <div className="command-input-container">
@@ -293,6 +302,13 @@ const CommandInput: React.FC = () => {
           autoCorrect="off"
           autoCapitalize="off"
         />
+        <button
+          className="passthrough-toggle-btn"
+          onClick={togglePassthroughMode}
+          title="Passthrough Mode (Cmd+E)"
+        >
+          <CommandLineIcon />
+        </button>
       </div>
     </div>
   );

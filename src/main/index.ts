@@ -130,6 +130,19 @@ function buildAppMenu(): void {
       ],
     },
     {
+      label: 'Terminal',
+      submenu: [
+        {
+          label: 'Toggle Passthrough Mode',
+          accelerator: 'CmdOrCtrl+E',
+          click: () => {
+            const win = BrowserWindow.getFocusedWindow();
+            if (win) win.webContents.send('terminal:toggle-passthrough');
+          },
+        },
+      ],
+    },
+    {
       label: 'View',
       submenu: [
         { role: 'reload' },
