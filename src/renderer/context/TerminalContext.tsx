@@ -21,6 +21,8 @@ interface TerminalContextValue {
   isSearchOpen: boolean;
   setIsSearchOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isRawMode: boolean;
+  isPassthroughMode: boolean;
+  togglePassthroughMode: () => void;
   historyIndex: number;
   executeCommand: (command: string) => void;
   removeFromHistory: (command: string) => void;
@@ -54,6 +56,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isRawMode, setIsRawMode] = useState(false);
+  const [isPassthroughMode, setIsPassthroughMode] = useState(false);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [fontSize, setFontSizeState] = useState(() => {
     const saved = localStorage.getItem('terminal-font-size');
@@ -72,6 +75,14 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
     const rows = term?.rows ?? 24;
     const { id } = await window.electronAPI.ptySpawn(cols, rows);
     setPtyId(id);
+  }, []);
+
+  // Listen for menu-triggered passthrough toggle
+  useEffect(() => {
+    const unsub = window.electronAPI.onTogglePassthrough(() => {
+      setIsPassthroughMode((prev) => !prev);
+    });
+    return unsub;
   }, []);
 
   // Initialize PTY and load persisted data
@@ -122,6 +133,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       if (id === ptyId) {
         terminalRef.current?.write('\r\n[Process exited — restarting shell...]\r\n');
         setIsRawMode(false);
+        setIsPassthroughMode(false);
         spawnPty();
       }
     });
@@ -215,6 +227,10 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsPaletteOpen((prev) => !prev);
   }, []);
 
+  const togglePassthroughMode = useCallback(() => {
+    setIsPassthroughMode((prev) => !prev);
+  }, []);
+
   const filterHistory = useCallback(
     (prefix: string): string[] => {
       const lower = prefix.toLowerCase();
@@ -244,6 +260,8 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       isSearchOpen,
       setIsSearchOpen,
       isRawMode,
+      isPassthroughMode,
+      togglePassthroughMode,
       historyIndex,
       executeCommand,
       removeFromHistory,
@@ -264,6 +282,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       isPaletteOpen,
       isSearchOpen,
       isRawMode,
+      isPassthroughMode,
       historyIndex,
       fontSize,
       executeCommand,

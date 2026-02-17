@@ -27,7 +27,7 @@ const SEARCH_FIND_OPTIONS = {
 
 const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { ptyId, terminalRef, isRawMode, cwdHistoryRef, isSearchOpen, setIsSearchOpen, fontSize, setFontSize } = useTerminal();
+  const { ptyId, terminalRef, isRawMode, isPassthroughMode, togglePassthroughMode, cwdHistoryRef, isSearchOpen, setIsSearchOpen, fontSize, setFontSize } = useTerminal();
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
   const onDataDisposableRef = useRef<{ dispose: () => void } | null>(null);
@@ -201,21 +201,22 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
     }
   }, [ptyId]);
 
-  // Handle raw mode: toggle stdin and forward keystrokes
+  // Handle raw mode and passthrough mode: toggle stdin and forward keystrokes
   useEffect(() => {
     const term = terminalRef.current;
     if (!term) return;
 
-    term.options.disableStdin = !isRawMode;
+    const shouldForward = isRawMode || isPassthroughMode;
+    term.options.disableStdin = !shouldForward;
 
-    if (isRawMode && ptyId) {
-      // In raw mode, forward xterm.js input directly to PTY
+    if (shouldForward && ptyId) {
+      // Forward xterm.js input directly to PTY
       const disposable = term.onData((data) => {
         window.electronAPI.ptyWrite(ptyId, data);
       });
       onDataDisposableRef.current = disposable;
 
-      // Focus the terminal in raw mode
+      // Focus the terminal
       term.focus();
 
       return () => {
@@ -223,7 +224,7 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
         onDataDisposableRef.current = null;
       };
     }
-  }, [isRawMode, ptyId]);
+  }, [isRawMode, isPassthroughMode, ptyId]);
 
   // Update terminal font size when it changes
   useEffect(() => {
@@ -302,6 +303,18 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
         </div>
       )}
       <div ref={containerRef} className="terminal-output" />
+      {isPassthroughMode && (
+        <div className="passthrough-indicator">
+          <span className="passthrough-label">Passthrough mode enabled</span>
+          <button
+            className="passthrough-exit-btn"
+            onClick={togglePassthroughMode}
+            title="Exit Passthrough Mode (Cmd+E)"
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      )}
       {children}
     </div>
   );
