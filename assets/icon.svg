@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1b26"/>
+      <stop offset="100%" stop-color="#24283b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7aa2f7"/>
+      <stop offset="100%" stop-color="#bb9af7"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded rect -->
+  <rect width="1024" height="1024" rx="220" ry="220" fill="url(#bg)"/>
+  <!-- Border glow -->
+  <rect x="8" y="8" width="1008" height="1008" rx="212" ry="212" fill="none" stroke="#33467c" stroke-width="4"/>
+  <!-- Terminal prompt: >_ -->
+  <text x="220" y="640" font-family="SF Mono, Menlo, Monaco, monospace" font-size="480" font-weight="bold" fill="url(#accent)">&gt;_</text>
+</svg>

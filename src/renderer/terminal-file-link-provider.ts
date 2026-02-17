@@ -135,8 +135,6 @@ export class FileSystemLinkProvider implements ILinkProvider {
       results = await window.electronAPI.fsResolveTokens(cwd, cleanTokens);
     }
 
-    console.log('[file-links] cwd:', cwd, 'tokens:', cleanTokens, 'results:', results);
-
     const links: ILink[] = [];
     for (let i = 0; i < results.length; i++) {
       const { name, type } = results[i];
