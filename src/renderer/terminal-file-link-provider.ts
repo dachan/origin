@@ -87,9 +87,9 @@ export class FileSystemLinkProvider implements ILinkProvider {
     const lineText = this.getLineText(bufferLineNumber);
     if (!lineText) return undefined;
 
-    // Tokenize by 2+ spaces to preserve filenames with single internal spaces
-    // (ls column output separates entries with 2+ spaces for alignment)
-    const tokenEntries: { token: string; startCol: number }[] = [];
+    // Pass 1: tokenize preserving single-space filenames (e.g. "Stream Deck")
+    // ls column output separates entries with 2+ spaces for alignment
+    let tokenEntries: { token: string; startCol: number }[] = [];
     const regex = /\S+(?:\s(?!\s)\S+)*/g;
     let match: RegExpExecArray | null;
     while ((match = regex.exec(lineText)) !== null) {
@@ -102,8 +102,38 @@ export class FileSystemLinkProvider implements ILinkProvider {
     if (tokenEntries.length === 0) return undefined;
 
     // Strip ls indicator suffixes before resolving against the filesystem
-    const cleanTokens = tokenEntries.map((e) => stripIndicator(e.token));
-    const results = await window.electronAPI.fsResolveTokens(cwd, cleanTokens);
+    let cleanTokens = tokenEntries.map((e) => stripIndicator(e.token));
+    let results = await window.electronAPI.fsResolveTokens(cwd, cleanTokens);
+
+    // Pass 2: for unresolved multi-word tokens, split into individual words
+    // and try again (handles single-space column gaps in ls output)
+    const hasUnresolvedMultiWord = results.some(
+      (r, i) => !r.type && cleanTokens[i].includes(' ')
+    );
+    if (hasUnresolvedMultiWord) {
+      const expanded: { token: string; startCol: number }[] = [];
+      for (let i = 0; i < tokenEntries.length; i++) {
+        if (!results[i].type && tokenEntries[i].token.includes(' ')) {
+          // Split this grouped token into individual words
+          const wordRegex = /\S+/g;
+          let wordMatch: RegExpExecArray | null;
+          while ((wordMatch = wordRegex.exec(tokenEntries[i].token)) !== null) {
+            const word = wordMatch[0];
+            if (!shouldSkipToken(word)) {
+              expanded.push({
+                token: word,
+                startCol: tokenEntries[i].startCol + wordMatch.index,
+              });
+            }
+          }
+        } else {
+          expanded.push(tokenEntries[i]);
+        }
+      }
+      tokenEntries = expanded;
+      cleanTokens = tokenEntries.map((e) => stripIndicator(e.token));
+      results = await window.electronAPI.fsResolveTokens(cwd, cleanTokens);
+    }
 
     console.log('[file-links] cwd:', cwd, 'tokens:', cleanTokens, 'results:', results);
 
