@@ -24,11 +24,21 @@ function shouldSkipToken(token: string): boolean {
   return SKIP_PATTERNS.some((re) => re.test(cleaned));
 }
 
+export interface CwdHistoryEntry {
+  line: number;
+  cwd: string;
+}
+
 export class FileSystemLinkProvider implements ILinkProvider {
   private ptyIdRef: { current: string | null };
+  private cwdHistoryRef: { current: CwdHistoryEntry[] };
 
-  constructor(ptyIdRef: { current: string | null }) {
+  constructor(
+    ptyIdRef: { current: string | null },
+    cwdHistoryRef: { current: CwdHistoryEntry[] }
+  ) {
     this.ptyIdRef = ptyIdRef;
+    this.cwdHistoryRef = cwdHistoryRef;
   }
 
   provideLinks(
@@ -46,11 +56,30 @@ export class FileSystemLinkProvider implements ILinkProvider {
     });
   }
 
+  private cwdForLine(bufferLineNumber: number): string | null {
+    const history = this.cwdHistoryRef.current;
+    // Find the last entry where entry.line <= bufferLineNumber
+    let best: CwdHistoryEntry | null = null;
+    for (const entry of history) {
+      if (entry.line <= bufferLineNumber) {
+        best = entry;
+      } else {
+        break;
+      }
+    }
+    return best ? best.cwd : null;
+  }
+
   private async resolveLinks(
     ptyId: string,
     bufferLineNumber: number
   ): Promise<ILink[] | undefined> {
-    const cwd = await window.electronAPI.fsGetCwd(ptyId);
+    // Look up the CWD that was active when this line was produced
+    let cwd = this.cwdForLine(bufferLineNumber);
+    // Fall back to live CWD if no history entry covers this line
+    if (!cwd) {
+      cwd = await window.electronAPI.fsGetCwd(ptyId);
+    }
     if (!cwd) return undefined;
 
     // We need the terminal buffer to read line text, but ILinkProvider
@@ -89,18 +118,18 @@ export class FileSystemLinkProvider implements ILinkProvider {
         end: { x: entry.startCol + entry.token.length, y: bufferLineNumber },
       };
 
+      // Build absolute path so clicks work even after cd'ing elsewhere
+      const fullPath = cwd + '/' + name;
+
       links.push({
         range,
         text: name,
         decorations: { pointerCursor: true, underline: true },
         activate: () => {
           if (type === 'directory') {
-            // cd into the directory
-            const escaped = name.replace(/'/g, "'\\''");
+            const escaped = fullPath.replace(/'/g, "'\\''");
             window.electronAPI.ptyWrite(ptyId, `cd '${escaped}'\n`);
           } else {
-            // Open file with OS default app
-            const fullPath = cwd + '/' + name;
             window.electronAPI.fsOpenFile(fullPath);
           }
         },

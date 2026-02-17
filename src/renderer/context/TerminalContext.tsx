@@ -9,16 +9,19 @@ import React, {
 } from 'react';
 import type { Terminal } from '@xterm/xterm';
 import type { StickyCommand } from '../types/commands';
+import type { CwdHistoryEntry } from '../terminal-file-link-provider';
 
 interface TerminalContextValue {
   ptyId: string | null;
   terminalRef: React.MutableRefObject<Terminal | null>;
+  cwdHistoryRef: React.MutableRefObject<CwdHistoryEntry[]>;
   history: string[];
   stickyCommands: StickyCommand[];
   isPaletteOpen: boolean;
   isRawMode: boolean;
   historyIndex: number;
   executeCommand: (command: string) => void;
+  removeFromHistory: (command: string) => void;
   addStickyCommand: (label: string, command: string) => void;
   removeStickyCommand: (id: string) => void;
   togglePalette: () => void;
@@ -39,6 +42,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [ptyId, setPtyId] = useState<string | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
+  const cwdHistoryRef = useRef<CwdHistoryEntry[]>([]);
   const [history, setHistory] = useState<string[]>([]);
   const [stickyCommands, setStickyCommands] = useState<StickyCommand[]>([]);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
@@ -109,6 +113,18 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
     (command: string) => {
       if (!ptyId) return;
 
+      // Snapshot current CWD and cursor line before writing to PTY
+      const term = terminalRef.current;
+      if (term) {
+        const cursorLine =
+          term.buffer.active.baseY + term.buffer.active.cursorY;
+        window.electronAPI.fsGetCwd(ptyId).then((cwd) => {
+          if (cwd) {
+            cwdHistoryRef.current.push({ line: cursorLine, cwd });
+          }
+        });
+      }
+
       // Send to PTY
       window.electronAPI.ptyWrite(ptyId, command + '\n');
 
@@ -122,6 +138,14 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       setHistoryIndex(-1);
     },
     [ptyId]
+  );
+
+  const removeFromHistory = useCallback(
+    (command: string) => {
+      window.electronAPI.historyRemove(command);
+      setHistory((prev) => prev.filter((c) => c !== command));
+    },
+    []
   );
 
   const addStickyCommand = useCallback(
@@ -174,12 +198,14 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
     () => ({
       ptyId,
       terminalRef,
+      cwdHistoryRef,
       history,
       stickyCommands,
       isPaletteOpen,
       isRawMode,
       historyIndex,
       executeCommand,
+      removeFromHistory,
       addStickyCommand,
       removeStickyCommand,
       togglePalette,
@@ -194,6 +220,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       isRawMode,
       historyIndex,
       executeCommand,
+      removeFromHistory,
       addStickyCommand,
       removeStickyCommand,
       togglePalette,

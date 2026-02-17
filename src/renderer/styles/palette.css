@@ -10,7 +10,7 @@
 
 .palette-modal {
   width: 560px;
-  max-height: 400px;
+  max-height: 60vh;
   background: #1f2335;
   border: 1px solid #292e42;
   border-radius: 10px;
@@ -135,6 +135,16 @@
 .palette-item-pin:hover {
   background: #33467c;
   color: #c0caf5;
+}
+
+.palette-item-delete {
+  color: #f7768e;
+  border-color: #4c3040;
+}
+
+.palette-item-delete:hover {
+  background: #4c3040;
+  color: #f7768e;
 }
 
 .palette-pin-form {
