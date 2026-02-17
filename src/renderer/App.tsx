@@ -26,8 +26,9 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="app-container">
-      <TerminalOutput />
-      <CommandInput />
+      <TerminalOutput>
+        <CommandInput />
+      </TerminalOutput>
       <CommandPalette />
     </div>
   );

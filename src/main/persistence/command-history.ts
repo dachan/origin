@@ -116,6 +116,11 @@ class CommandHistoryStore {
     ]);
   }
 
+  async clearAll(): Promise<void> {
+    this.cache = [];
+    await this.store.save([]);
+  }
+
   async append(command: string): Promise<void> {
     const history = await this.load();
     // Deduplicate: remove previous occurrence if it exists

@@ -59,6 +59,8 @@ const api = {
   historyRemove: (command: string): Promise<void> =>
     ipcRenderer.invoke('history:remove', command),
 
+  historyClear: (): Promise<void> => ipcRenderer.invoke('history:clear'),
+
   stickyLoad: (): Promise<StickyCommand[]> =>
     ipcRenderer.invoke('sticky:load'),
 
@@ -74,6 +76,11 @@ const api = {
     tokens: string[]
   ): Promise<{ name: string; type: 'file' | 'directory' | null }[]> =>
     ipcRenderer.invoke('fs:resolveTokens', { cwd, tokens }),
+
+  fsStat: (
+    filePath: string
+  ): Promise<{ size: number; created: string; modified: string } | null> =>
+    ipcRenderer.invoke('fs:stat', filePath),
 
   fsOpenFile: (filePath: string): Promise<string> =>
     ipcRenderer.invoke('fs:openFile', filePath),

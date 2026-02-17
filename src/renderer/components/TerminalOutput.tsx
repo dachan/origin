@@ -24,9 +24,9 @@ const SEARCH_FIND_OPTIONS = {
   },
 };
 
-const TerminalOutput: React.FC = () => {
+const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { ptyId, terminalRef, isRawMode, cwdHistoryRef, isSearchOpen, setIsSearchOpen } = useTerminal();
+  const { ptyId, terminalRef, isRawMode, cwdHistoryRef, isSearchOpen, setIsSearchOpen, fontSize, setFontSize } = useTerminal();
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
   const onDataDisposableRef = useRef<{ dispose: () => void } | null>(null);
@@ -75,7 +75,7 @@ const TerminalOutput: React.FC = () => {
       cursorBlink: false,
       cursorInactiveStyle: 'none',
       disableStdin: true,
-      fontSize: 14,
+      fontSize,
       fontFamily: "'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
       theme: {
         background: '#1a1b26',
@@ -205,6 +205,34 @@ const TerminalOutput: React.FC = () => {
     }
   }, [isRawMode, ptyId]);
 
+  // Update terminal font size when it changes
+  useEffect(() => {
+    const term = terminalRef.current;
+    if (term) {
+      term.options.fontSize = fontSize;
+      fitAddonRef.current?.fit();
+    }
+  }, [fontSize]);
+
+  // Cmd+=/- to zoom, Cmd+0 to reset
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key === '=' || e.key === '+') {
+        e.preventDefault();
+        setFontSize(fontSize + 1);
+      } else if (e.key === '-') {
+        e.preventDefault();
+        setFontSize(fontSize - 1);
+      } else if (e.key === '0') {
+        e.preventDefault();
+        setFontSize(14);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [fontSize, setFontSize]);
+
   return (
     <div className="terminal-wrapper">
       {isSearchOpen && (
@@ -249,6 +277,7 @@ const TerminalOutput: React.FC = () => {
         </div>
       )}
       <div ref={containerRef} className="terminal-output" />
+      {children}
     </div>
   );
 };
