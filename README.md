@@ -1,8 +1,8 @@
-# Origin: SAM — Shell Augmentation Manager
+# Origin: Shell Augmentation Manager
 
 > **Early Prototype** — This project is in active early development. Features may be incomplete, APIs may change, and rough edges are expected. Feedback and contributions welcome.
 
-A modern terminal replacement built with Electron, xterm.js, and React. Origin: SAM enhances the standard shell experience with smart command input, persistent history, pinnable commands, and clickable file/directory links.
+A modern terminal replacement built with Electron, xterm.js, and React. Origin enhances the standard shell experience with smart command input, persistent history, pinnable commands, and clickable file/directory links.
 
 ## Features
 
