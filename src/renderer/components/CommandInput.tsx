@@ -2,6 +2,7 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useTerminal } from '../context/TerminalContext';
 import Autocomplete from './Autocomplete';
 import Prompt from './Prompt';
+import { showToast } from './Toast';
 
 const CommandInput: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -189,9 +190,8 @@ const CommandInput: React.FC = () => {
       if (e.key === 'Tab' && !showAutocomplete) {
         e.preventDefault();
         if (ptyId && inputValue.trim()) {
-          // For tab completion, we need to write the current input to PTY
-          // and then send a tab character
           window.electronAPI.ptyWrite(ptyId, inputValue + '\t');
+          showToast('Tab completing...');
         }
       }
     },

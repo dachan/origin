@@ -24,6 +24,12 @@ function shouldSkipToken(token: string): boolean {
   return SKIP_PATTERNS.some((re) => re.test(cleaned));
 }
 
+// Global flag to suppress tooltips (e.g. when context menu is open)
+let tooltipsSuppressed = false;
+export function suppressTooltips(suppressed: boolean): void {
+  tooltipsSuppressed = suppressed;
+}
+
 export interface CwdHistoryEntry {
   line: number;
   cwd: string;
@@ -39,6 +45,7 @@ export class FileSystemLinkProvider implements ILinkProvider {
   ) {
     this.ptyIdRef = ptyIdRef;
     this.cwdHistoryRef = cwdHistoryRef;
+    window.addEventListener('contextmenu', () => this.hideTooltip());
   }
 
   provideLinks(
@@ -153,7 +160,9 @@ export class FileSystemLinkProvider implements ILinkProvider {
         range,
         text: name,
         decorations: { pointerCursor: true, underline: true },
-        activate: () => {
+        activate: (_event: MouseEvent) => {
+          // Ignore right-click — let context menu handle it
+          if (_event.button !== 0) return;
           if (type === 'directory') {
             const escaped = fullPath.replace(/'/g, "'\\''");
             window.electronAPI.ptyWrite(ptyId, `cd '${escaped}'\n`);
@@ -206,6 +215,7 @@ export class FileSystemLinkProvider implements ILinkProvider {
     type: 'file' | 'directory',
     name: string
   ): void {
+    if (tooltipsSuppressed) return;
     // Show immediate tooltip with action hint
     const action = type === 'directory' ? `cd ${name}` : `Open ${name}`;
     this.showTooltip(event, action);
@@ -225,6 +235,7 @@ export class FileSystemLinkProvider implements ILinkProvider {
   }
 
   private showTooltip(event: MouseEvent, text: string): void {
+    if (tooltipsSuppressed) return;
     this.hideTooltip();
     const el = document.createElement('div');
     el.className = 'xterm-hover';

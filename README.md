@@ -13,6 +13,7 @@ A modern terminal replacement built with Electron, xterm.js, and React. Origin e
 - Adjustable font size (Cmd+=/-, persisted across sessions)
 - Tokyo Night color theme with full 16-color ANSI palette
 - Auto-restarts shell on exit
+- Window size and position remembered between sessions
 
 ### Clickable Files & Directories
 - Hover over filenames in terminal output to see them highlighted
@@ -38,9 +39,20 @@ A modern terminal replacement built with Electron, xterm.js, and React. Origin e
 ### Command Palette
 - Quick access to recent and starred commands
 - Star frequently used commands with custom labels
+- Drag to reorder starred commands
 - Remove individual commands from history
-- Clear all history with one click
+- Clear all history with one click (with confirmation)
 - Search filters both labels and commands
+
+### Context Menu
+- Right-click in terminal or input area
+- Copy selected text
+- Search selected text in terminal
+- Paste into command input
+- Clear terminal
+
+### Toast Notifications
+- Non-intrusive feedback for actions (star/unstar, clear history, font size changes)
 
 ### Raw Mode
 - Automatically detects interactive programs (vim, less, top, etc.)

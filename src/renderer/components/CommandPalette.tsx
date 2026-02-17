@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useTerminal } from '../context/TerminalContext';
+import { showToast } from './Toast';
 
 const ICON_SIZE = 14;
 
@@ -35,12 +36,15 @@ const CommandPalette: React.FC = () => {
     clearHistory,
     addStickyCommand,
     removeStickyCommand,
+    reorderStickyCommands,
   } = useTerminal();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const dragIndexRef = useRef<number | null>(null);
   const [pinningCommand, setPinningCommand] = useState<string | null>(null);
   const [pinLabel, setPinLabel] = useState('');
+  const [confirmingClear, setConfirmingClear] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const pinInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,6 +81,7 @@ const CommandPalette: React.FC = () => {
       setSearchQuery('');
       setSelectedIndex(0);
       setPinningCommand(null);
+      setConfirmingClear(false);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [isPaletteOpen]);
@@ -134,6 +139,7 @@ const CommandPalette: React.FC = () => {
   const handlePinConfirm = useCallback(() => {
     if (pinningCommand && pinLabel.trim()) {
       addStickyCommand(pinLabel.trim(), pinningCommand);
+      showToast('Command starred');
     }
     setPinningCommand(null);
     setPinLabel('');
@@ -148,6 +154,7 @@ const CommandPalette: React.FC = () => {
     (e: React.MouseEvent, id: string) => {
       e.stopPropagation();
       removeStickyCommand(id);
+      showToast('Command unstarred');
     },
     [removeStickyCommand]
   );
@@ -181,15 +188,22 @@ const CommandPalette: React.FC = () => {
           />
           {history.length > 0 && (
             <button
-              className="palette-clear-all-btn"
+              className={`palette-clear-all-btn ${confirmingClear ? 'confirming' : ''}`}
               onClick={() => {
-                clearHistory();
-                setSearchQuery('');
-                setSelectedIndex(0);
+                if (confirmingClear) {
+                  clearHistory();
+                  setSearchQuery('');
+                  setSelectedIndex(0);
+                  setConfirmingClear(false);
+                  showToast('History cleared');
+                } else {
+                  setConfirmingClear(true);
+                }
               }}
+              onBlur={() => setConfirmingClear(false)}
               title="Clear all history"
             >
-              Clear History
+              {confirmingClear ? 'Confirm?' : 'Clear History'}
             </button>
           )}
         </div>
@@ -216,14 +230,36 @@ const CommandPalette: React.FC = () => {
             </div>
           )}
           {pinningCommand === null && filteredItems.length === 0 && (
-            <div className="palette-empty">No matching commands</div>
+            <div className="palette-empty">
+              {searchQuery
+                ? 'No matching commands'
+                : 'Run some commands to build your history'}
+            </div>
           )}
-          {pinningCommand === null && filteredItems.map((item, index) => (
+          {pinningCommand === null && filteredItems.map((item, index) => {
+            const stickyIndex = item.type === 'sticky'
+              ? stickyCommands.findIndex((s) => s.id === item.id)
+              : -1;
+            return (
             <div
               key={`${item.type}-${item.id}`}
               className={`palette-item ${index === selectedIndex ? 'selected' : ''} ${item.type === 'sticky' ? 'sticky' : ''}`}
               onClick={() => handleSelect(item)}
               onMouseEnter={() => setSelectedIndex(index)}
+              draggable={item.type === 'sticky'}
+              onDragStart={() => { dragIndexRef.current = stickyIndex; }}
+              onDragOver={(e) => {
+                if (item.type === 'sticky' && dragIndexRef.current !== null) {
+                  e.preventDefault();
+                }
+              }}
+              onDrop={() => {
+                if (item.type === 'sticky' && dragIndexRef.current !== null && dragIndexRef.current !== stickyIndex) {
+                  reorderStickyCommands(dragIndexRef.current, stickyIndex);
+                }
+                dragIndexRef.current = null;
+              }}
+              onDragEnd={() => { dragIndexRef.current = null; }}
             >
               {item.type === 'sticky' && (
                 <span className="sticky-pin" title="Starred">
@@ -263,7 +299,13 @@ const CommandPalette: React.FC = () => {
                 </>
               )}
             </div>
-          ))}
+            );
+          })}
+        </div>
+        <div className="palette-footer">
+          <span><kbd>Enter</kbd> Run</span>
+          <span><kbd>↑↓</kbd> Navigate</span>
+          <span><kbd>Esc</kbd> Close</span>
         </div>
       </div>
     </div>
