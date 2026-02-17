@@ -24,11 +24,14 @@ interface TerminalContextValue {
   historyIndex: number;
   executeCommand: (command: string) => void;
   removeFromHistory: (command: string) => void;
+  clearHistory: () => void;
   addStickyCommand: (label: string, command: string) => void;
   removeStickyCommand: (id: string) => void;
   togglePalette: () => void;
   setHistoryIndex: (index: number) => void;
   filterHistory: (prefix: string) => string[];
+  fontSize: number;
+  setFontSize: (size: number) => void;
 }
 
 const TerminalContext = createContext<TerminalContextValue | null>(null);
@@ -51,6 +54,16 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isRawMode, setIsRawMode] = useState(false);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [fontSize, setFontSizeState] = useState(() => {
+    const saved = localStorage.getItem('terminal-font-size');
+    return saved ? Number(saved) : 14;
+  });
+
+  const setFontSize = useCallback((size: number) => {
+    const clamped = Math.max(8, Math.min(32, size));
+    setFontSizeState(clamped);
+    localStorage.setItem('terminal-font-size', String(clamped));
+  }, []);
 
   const spawnPty = useCallback(async () => {
     const term = terminalRef.current;
@@ -157,6 +170,11 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
+  const clearHistory = useCallback(() => {
+    window.electronAPI.historyClear();
+    setHistory([]);
+  }, []);
+
   const addStickyCommand = useCallback(
     async (label: string, command: string) => {
       const newCmd: StickyCommand = {
@@ -217,11 +235,14 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       historyIndex,
       executeCommand,
       removeFromHistory,
+      clearHistory,
       addStickyCommand,
       removeStickyCommand,
       togglePalette,
       setHistoryIndex,
       filterHistory,
+      fontSize,
+      setFontSize,
     }),
     [
       ptyId,
@@ -231,12 +252,15 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       isSearchOpen,
       isRawMode,
       historyIndex,
+      fontSize,
       executeCommand,
       removeFromHistory,
+      clearHistory,
       addStickyCommand,
       removeStickyCommand,
       togglePalette,
       filterHistory,
+      setFontSize,
     ]
   );
 

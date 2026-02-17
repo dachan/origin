@@ -3,17 +3,17 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #1a1b26;
 }
 
 .terminal-output {
   flex: 1;
   overflow: hidden;
   padding: 4px 4px 0;
-}
-
-/* Override xterm.js viewport to fill container */
-.terminal-output .xterm {
-  height: 100%;
+  background: #1a1b26;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
 .terminal-output .xterm-viewport {
@@ -76,8 +76,7 @@
 /* Command input area */
 .command-input-container {
   position: relative;
-  border-top: 1px solid #292e42;
-  background: #1f2335;
+  background: #1a1b26;
   padding: 8px 12px;
   flex-shrink: 0;
 }

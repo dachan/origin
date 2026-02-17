@@ -17,7 +17,6 @@ export const mainConfig: Configuration = {
   resolve: {
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.css', '.json'],
   },
-  // Externalize node-pty to avoid webpack bundling issues with native modules
   externals: {
     'node-pty': 'commonjs node-pty',
   },

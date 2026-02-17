@@ -161,11 +161,8 @@ export class FileSystemLinkProvider implements ILinkProvider {
             window.electronAPI.fsOpenFile(fullPath);
           }
         },
-        hover: (_event: MouseEvent) => {
-          this.showTooltip(
-            _event,
-            type === 'directory' ? `cd ${name}` : `Open ${name}`
-          );
+        hover: (event: MouseEvent) => {
+          this.showMetadataTooltip(event, fullPath, type, name);
         },
         leave: () => {
           this.hideTooltip();
@@ -186,6 +183,46 @@ export class FileSystemLinkProvider implements ILinkProvider {
   }
 
   private tooltipEl: HTMLElement | null = null;
+  private tooltipRequestId = 0;
+
+  private formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
+
+  private formatDate(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  }
+
+  private showMetadataTooltip(
+    event: MouseEvent,
+    fullPath: string,
+    type: 'file' | 'directory',
+    name: string
+  ): void {
+    // Show immediate tooltip with action hint
+    const action = type === 'directory' ? `cd ${name}` : `Open ${name}`;
+    this.showTooltip(event, action);
+
+    // Fetch metadata async and update tooltip
+    const requestId = ++this.tooltipRequestId;
+    window.electronAPI.fsStat(fullPath).then((stat) => {
+      if (!stat || requestId !== this.tooltipRequestId || !this.tooltipEl) return;
+      const lines = [action];
+      if (type === 'file') lines.push(this.formatSize(stat.size));
+      lines.push(`Created: ${this.formatDate(stat.created)}`);
+      lines.push(`Modified: ${this.formatDate(stat.modified)}`);
+      this.tooltipEl.innerHTML = lines
+        .map((l, i) => `<div style="${i === 0 ? 'margin-bottom:4px' : 'color:#565f89'}">${l}</div>`)
+        .join('');
+    }).catch(() => { /* best-effort */ });
+  }
 
   private showTooltip(event: MouseEvent, text: string): void {
     this.hideTooltip();
@@ -198,19 +235,22 @@ export class FileSystemLinkProvider implements ILinkProvider {
       top: ${event.clientY - 28}px;
       background: #1e1e2e;
       color: #c0caf5;
-      padding: 2px 8px;
+      padding: 4px 10px;
       border-radius: 4px;
       font-size: 12px;
+      line-height: 1.5;
       font-family: 'SF Mono', 'Menlo', monospace;
       pointer-events: none;
       z-index: 10000;
       border: 1px solid #33467c;
+      white-space: nowrap;
     `;
     document.body.appendChild(el);
     this.tooltipEl = el;
   }
 
   private hideTooltip(): void {
+    this.tooltipRequestId++;
     if (this.tooltipEl) {
       this.tooltipEl.remove();
       this.tooltipEl = null;

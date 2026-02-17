@@ -32,6 +32,7 @@ const CommandPalette: React.FC = () => {
     stickyCommands,
     executeCommand,
     removeFromHistory,
+    clearHistory,
     addStickyCommand,
     removeStickyCommand,
   } = useTerminal();
@@ -178,6 +179,19 @@ const CommandPalette: React.FC = () => {
             onKeyDown={handleKeyDown}
             placeholder="Search commands..."
           />
+          {history.length > 0 && (
+            <button
+              className="palette-clear-all-btn"
+              onClick={() => {
+                clearHistory();
+                setSearchQuery('');
+                setSelectedIndex(0);
+              }}
+              title="Clear all history"
+            >
+              Clear History
+            </button>
+          )}
         </div>
         <div className="palette-list">
           {pinningCommand !== null && (

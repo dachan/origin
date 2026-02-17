@@ -61,6 +61,10 @@ export function registerIpcHandlers(): void {
     return commandHistoryStore.remove(command);
   });
 
+  ipcMain.handle('history:clear', async () => {
+    return commandHistoryStore.clearAll();
+  });
+
   ipcMain.handle('sticky:load', async () => {
     return stickyCommandsStore.load();
   });
@@ -106,6 +110,27 @@ export function registerIpcHandlers(): void {
         })
       );
       return results;
+    }
+  );
+
+  ipcMain.handle(
+    'fs:stat',
+    async (_event, filePath: string): Promise<{
+      size: number;
+      created: string;
+      modified: string;
+    } | null> => {
+      try {
+        const resolved = path.resolve(filePath);
+        const stat = await fs.promises.stat(resolved);
+        return {
+          size: stat.size,
+          created: stat.birthtime.toISOString(),
+          modified: stat.mtime.toISOString(),
+        };
+      } catch {
+        return null;
+      }
     }
   );
 

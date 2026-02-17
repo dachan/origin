@@ -23,14 +23,18 @@
 
 .palette-header {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+  border-bottom: 1px solid #292e42;
 }
 
 .palette-search {
-  width: 100%;
+  flex: 1;
   padding: 14px 16px;
   background: transparent;
   border: none;
-  border-bottom: 1px solid #292e42;
   color: #c0caf5;
   font-size: 15px;
   outline: none;
@@ -206,4 +210,23 @@
 .palette-pin-btn.cancel:hover {
   border-color: #3b4261;
   color: #c0caf5;
+}
+
+.palette-clear-all-btn {
+  background: none;
+  border: 1px solid #292e42;
+  border-radius: 4px;
+  color: #565f89;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: all 0.1s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.palette-clear-all-btn:hover {
+  border-color: #f7768e;
+  color: #f7768e;
 }
