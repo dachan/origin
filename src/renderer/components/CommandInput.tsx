@@ -20,6 +20,7 @@ const CommandInput: React.FC = () => {
     filterHistory,
     isRawMode,
     isPaletteOpen,
+    isSearchOpen,
   } = useTerminal();
 
   // Auto-resize textarea height
@@ -239,7 +240,7 @@ const CommandInput: React.FC = () => {
 
   // Always keep focus on the textarea when the app is focused
   useEffect(() => {
-    if (isRawMode || isPaletteOpen) return;
+    if (isRawMode || isPaletteOpen || isSearchOpen) return;
 
     textareaRef.current?.focus();
 
@@ -259,7 +260,7 @@ const CommandInput: React.FC = () => {
       document.removeEventListener('focusin', handleFocusIn);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [isRawMode, isPaletteOpen]);
+  }, [isRawMode, isPaletteOpen, isSearchOpen]);
 
   // Don't render in raw mode
   if (isRawMode) return null;

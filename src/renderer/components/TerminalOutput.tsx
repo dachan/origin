@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
@@ -8,18 +8,70 @@ import '@xterm/xterm/css/xterm.css';
 import { useTerminal } from '../context/TerminalContext';
 import { FileSystemLinkProvider } from '../terminal-file-link-provider';
 
+const SEARCH_MATCH_BG = '#e0af68';
+const SEARCH_MATCH_FG = '#1a1b26';
+const SEARCH_ACTIVE_BG = '#ff9e64';
+const SEARCH_ACTIVE_FG = '#1a1b26';
+
+const SEARCH_FIND_OPTIONS = {
+  decorations: {
+    matchBackground: SEARCH_MATCH_BG,
+    matchBorder: SEARCH_MATCH_BG,
+    matchOverviewRuler: SEARCH_MATCH_BG,
+    activeMatchBackground: SEARCH_ACTIVE_BG,
+    activeMatchBorder: SEARCH_ACTIVE_BG,
+    activeMatchColorOverviewRuler: SEARCH_ACTIVE_BG,
+  },
+};
+
 const TerminalOutput: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { ptyId, terminalRef, isRawMode, cwdHistoryRef } = useTerminal();
+  const { ptyId, terminalRef, isRawMode, cwdHistoryRef, isSearchOpen, setIsSearchOpen } = useTerminal();
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const searchAddonRef = useRef<SearchAddon | null>(null);
   const onDataDisposableRef = useRef<{ dispose: () => void } | null>(null);
   const ptyIdRef = useRef<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const closeSearch = useCallback(() => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    searchAddonRef.current?.clearDecorations();
+  }, [setIsSearchOpen]);
+
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      closeSearch();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        searchAddonRef.current?.findPrevious(searchQuery, SEARCH_FIND_OPTIONS);
+      } else {
+        searchAddonRef.current?.findNext(searchQuery, SEARCH_FIND_OPTIONS);
+      }
+    }
+  }, [searchQuery, closeSearch]);
+
+  // Cmd+F to open search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [setIsSearchOpen]);
 
   // Initialize xterm.js terminal
   useEffect(() => {
     if (!containerRef.current) return;
 
     const term = new Terminal({
+      allowProposedApi: true,
       cursorBlink: false,
       cursorInactiveStyle: 'none',
       disableStdin: true,
@@ -52,6 +104,17 @@ const TerminalOutput: React.FC = () => {
       convertEol: true,
     });
 
+    // Patch registerDecoration to inject foregroundColor for search decorations
+    const origRegisterDecoration = term.registerDecoration.bind(term);
+    term.registerDecoration = (opts: any) => {
+      if (opts.backgroundColor === SEARCH_MATCH_BG) {
+        opts = { ...opts, foregroundColor: SEARCH_MATCH_FG, layer: 'top' };
+      } else if (opts.backgroundColor === SEARCH_ACTIVE_BG) {
+        opts = { ...opts, foregroundColor: SEARCH_ACTIVE_FG, layer: 'top' };
+      }
+      return origRegisterDecoration(opts);
+    };
+
     const fitAddon = new FitAddon();
     const searchAddon = new SearchAddon();
     const webLinksAddon = new WebLinksAddon();
@@ -59,6 +122,8 @@ const TerminalOutput: React.FC = () => {
     term.loadAddon(fitAddon);
     term.loadAddon(searchAddon);
     term.loadAddon(webLinksAddon);
+
+    searchAddonRef.current = searchAddon;
 
     term.open(containerRef.current);
 
@@ -95,6 +160,7 @@ const TerminalOutput: React.FC = () => {
       term.dispose();
       terminalRef.current = null;
       fitAddonRef.current = null;
+      searchAddonRef.current = null;
     };
   }, []);
 
@@ -139,7 +205,52 @@ const TerminalOutput: React.FC = () => {
     }
   }, [isRawMode, ptyId]);
 
-  return <div ref={containerRef} className="terminal-output" />;
+  return (
+    <div className="terminal-wrapper">
+      {isSearchOpen && (
+        <div className="terminal-search-bar">
+          <input
+            ref={searchInputRef}
+            className="terminal-search-input"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              if (e.target.value) {
+                searchAddonRef.current?.findNext(e.target.value, SEARCH_FIND_OPTIONS);
+              } else {
+                searchAddonRef.current?.clearDecorations();
+              }
+            }}
+            onKeyDown={handleSearchKeyDown}
+            placeholder="Find in terminal..."
+          />
+          <button
+            className="terminal-search-btn"
+            onClick={() => searchAddonRef.current?.findPrevious(searchQuery, SEARCH_FIND_OPTIONS)}
+            title="Previous (Shift+Enter)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+          </button>
+          <button
+            className="terminal-search-btn"
+            onClick={() => searchAddonRef.current?.findNext(searchQuery, SEARCH_FIND_OPTIONS)}
+            title="Next (Enter)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+          </button>
+          <button
+            className="terminal-search-btn"
+            onClick={closeSearch}
+            title="Close (Escape)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      )}
+      <div ref={containerRef} className="terminal-output" />
+    </div>
+  );
 };
 
 export default TerminalOutput;

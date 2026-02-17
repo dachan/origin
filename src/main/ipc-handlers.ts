@@ -88,6 +88,11 @@ export function registerIpcHandlers(): void {
         tokens.map(async (token) => {
           try {
             const fullPath = path.resolve(cwd, token);
+            // Prevent path traversal outside the CWD
+            const rel = path.relative(cwd, fullPath);
+            if (rel.startsWith('..') || path.isAbsolute(rel)) {
+              return { name: token, type: null };
+            }
             const stat = await fs.promises.stat(fullPath);
             return {
               name: token,
@@ -107,7 +112,13 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     'fs:openFile',
     async (_event, filePath: string): Promise<string> => {
-      return shell.openPath(filePath);
+      // Only open files under the user's home directory
+      const home = require('os').homedir();
+      const resolved = path.resolve(filePath);
+      if (!resolved.startsWith(home)) {
+        return 'Blocked: path outside home directory';
+      }
+      return shell.openPath(resolved);
     }
   );
 }

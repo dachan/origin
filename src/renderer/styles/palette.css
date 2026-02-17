@@ -77,8 +77,10 @@
 }
 
 .sticky-pin {
-  font-size: 12px;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  color: #e0af68;
 }
 
 .palette-item-content {
@@ -113,12 +115,15 @@
   border: 1px solid #292e42;
   color: #565f89;
   cursor: pointer;
-  font-size: 12px;
-  padding: 2px 8px;
+  padding: 4px;
   border-radius: 4px;
   transition: all 0.1s ease;
   flex-shrink: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
 }
 
 .palette-item-action:hover {

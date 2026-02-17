@@ -18,6 +18,8 @@ interface TerminalContextValue {
   history: string[];
   stickyCommands: StickyCommand[];
   isPaletteOpen: boolean;
+  isSearchOpen: boolean;
+  setIsSearchOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isRawMode: boolean;
   historyIndex: number;
   executeCommand: (command: string) => void;
@@ -46,8 +48,17 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
   const [history, setHistory] = useState<string[]>([]);
   const [stickyCommands, setStickyCommands] = useState<StickyCommand[]>([]);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isRawMode, setIsRawMode] = useState(false);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const spawnPty = useCallback(async () => {
+    const term = terminalRef.current;
+    const cols = term?.cols ?? 80;
+    const rows = term?.rows ?? 24;
+    const { id } = await window.electronAPI.ptySpawn(cols, rows);
+    setPtyId(id);
+  }, []);
 
   // Initialize PTY and load persisted data
   useEffect(() => {
@@ -64,10 +75,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       setHistory(loadedHistory);
       setStickyCommands(loadedSticky);
 
-      // Spawn PTY - initial size, will be resized by TerminalOutput
-      const { id } = await window.electronAPI.ptySpawn(80, 24);
-      if (!mounted) return;
-      setPtyId(id);
+      await spawnPty();
     };
 
     init();
@@ -98,8 +106,9 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const unsubExit = window.electronAPI.onPtyExit(({ id }) => {
       if (id === ptyId) {
-        // Shell exited - could respawn or show message
-        terminalRef.current?.write('\r\n[Process exited]\r\n');
+        terminalRef.current?.write('\r\n[Process exited — restarting shell...]\r\n');
+        setIsRawMode(false);
+        spawnPty();
       }
     });
 
@@ -107,7 +116,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       unsubData();
       unsubExit();
     };
-  }, [ptyId]);
+  }, [ptyId, spawnPty]);
 
   const executeCommand = useCallback(
     (command: string) => {
@@ -122,14 +131,14 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
           if (cwd) {
             cwdHistoryRef.current.push({ line: cursorLine, cwd });
           }
-        });
+        }).catch(() => { /* CWD snapshot is best-effort */ });
       }
 
       // Send to PTY
       window.electronAPI.ptyWrite(ptyId, command + '\n');
 
       // Append to history
-      window.electronAPI.historyAppend(command);
+      window.electronAPI.historyAppend(command).catch(() => { /* best-effort */ });
       setHistory((prev) => {
         const filtered = prev.filter((c) => c !== command);
         return [...filtered, command];
@@ -202,6 +211,8 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       history,
       stickyCommands,
       isPaletteOpen,
+      isSearchOpen,
+      setIsSearchOpen,
       isRawMode,
       historyIndex,
       executeCommand,
@@ -217,6 +228,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       history,
       stickyCommands,
       isPaletteOpen,
+      isSearchOpen,
       isRawMode,
       historyIndex,
       executeCommand,

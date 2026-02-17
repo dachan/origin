@@ -16,6 +16,7 @@ const config: ForgeConfig = {
     asar: true,
     name: 'Origin Shell Augmentation Manager',
     executableName: 'origin-sam',
+    icon: './assets/icon',
   },
   rebuildConfig: {},
   makers: [
