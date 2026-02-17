@@ -15,11 +15,13 @@ export function registerIpcHandlers(): void {
 
       // Set up data streaming back to the renderer
       ptyManager.onData(id, (data: string) => {
+        if (_event.sender.isDestroyed()) return;
         const win = BrowserWindow.fromWebContents(_event.sender);
         win?.webContents.send('pty:data', { id, data });
       });
 
       ptyManager.onExit(id, (exitCode: number, signal: number) => {
+        if (_event.sender.isDestroyed()) return;
         const win = BrowserWindow.fromWebContents(_event.sender);
         win?.webContents.send('pty:exit', { id, exitCode, signal });
       });
@@ -53,6 +55,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('history:append', async (_event, command: string) => {
     return commandHistoryStore.append(command);
+  });
+
+  ipcMain.handle('history:remove', async (_event, command: string) => {
+    return commandHistoryStore.remove(command);
   });
 
   ipcMain.handle('sticky:load', async () => {

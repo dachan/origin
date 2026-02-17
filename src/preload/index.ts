@@ -56,6 +56,9 @@ const api = {
   historyAppend: (command: string): Promise<void> =>
     ipcRenderer.invoke('history:append', command),
 
+  historyRemove: (command: string): Promise<void> =>
+    ipcRenderer.invoke('history:remove', command),
+
   stickyLoad: (): Promise<StickyCommand[]> =>
     ipcRenderer.invoke('sticky:load'),
 

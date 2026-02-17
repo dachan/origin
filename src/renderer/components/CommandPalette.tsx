@@ -8,6 +8,7 @@ const CommandPalette: React.FC = () => {
     history,
     stickyCommands,
     executeCommand,
+    removeFromHistory,
     addStickyCommand,
     removeStickyCommand,
   } = useTerminal();
@@ -33,7 +34,6 @@ const CommandPalette: React.FC = () => {
 
     const recentItems = history
       .filter((cmd) => cmd.toLowerCase().includes(query))
-      .slice(-20)
       .reverse()
       .filter((cmd) => !stickyCommands.some((s) => s.command === cmd))
       .map((cmd) => ({
@@ -128,6 +128,15 @@ const CommandPalette: React.FC = () => {
     [removeStickyCommand]
   );
 
+  const handleRemoveHistory = useCallback(
+    (e: React.MouseEvent, command: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      removeFromHistory(command);
+    },
+    [removeFromHistory]
+  );
+
   if (!isPaletteOpen) return null;
 
   return (
@@ -199,13 +208,22 @@ const CommandPalette: React.FC = () => {
                   &times;
                 </button>
               ) : (
-                <button
-                  className="palette-item-action palette-item-pin"
-                  onClick={(e) => handlePin(e, item.command)}
-                  title="Pin as sticky"
-                >
-                  Pin
-                </button>
+                <>
+                  <button
+                    className="palette-item-action palette-item-pin"
+                    onClick={(e) => handlePin(e, item.command)}
+                    title="Pin as sticky"
+                  >
+                    Pin
+                  </button>
+                  <button
+                    className="palette-item-action palette-item-delete"
+                    onMouseDown={(e) => handleRemoveHistory(e, item.command)}
+                    title="Remove from history"
+                  >
+                    &times;
+                  </button>
+                </>
               )}
             </div>
           ))}

@@ -10,7 +10,7 @@ import { FileSystemLinkProvider } from '../terminal-file-link-provider';
 
 const TerminalOutput: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { ptyId, terminalRef, isRawMode } = useTerminal();
+  const { ptyId, terminalRef, isRawMode, cwdHistoryRef } = useTerminal();
   const fitAddonRef = useRef<FitAddon | null>(null);
   const onDataDisposableRef = useRef<{ dispose: () => void } | null>(null);
   const ptyIdRef = useRef<string | null>(null);
@@ -76,7 +76,7 @@ const TerminalOutput: React.FC = () => {
     fitAddonRef.current = fitAddon;
 
     // Register file link provider
-    const linkProvider = new FileSystemLinkProvider(ptyIdRef);
+    const linkProvider = new FileSystemLinkProvider(ptyIdRef, cwdHistoryRef);
     linkProvider.terminal = term;
     const linkDisposable = term.registerLinkProvider(linkProvider);
 
