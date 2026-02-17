@@ -7,6 +7,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 import { useTerminal } from '../context/TerminalContext';
 import { FileSystemLinkProvider } from '../terminal-file-link-provider';
+import { showToast } from './Toast';
 
 const SEARCH_MATCH_BG = '#e0af68';
 const SEARCH_MATCH_FG = '#1a1b26';
@@ -53,7 +54,7 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
     }
   }, [searchQuery, closeSearch]);
 
-  // Cmd+F to open search
+  // Cmd+F to open search; also handles 'terminal:search' custom event
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
@@ -62,8 +63,25 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
         setTimeout(() => searchInputRef.current?.focus(), 50);
       }
     };
+    const customHandler = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      setIsSearchOpen(true);
+      if (detail) {
+        setSearchQuery(detail);
+        setTimeout(() => {
+          searchInputRef.current?.focus();
+          searchAddonRef.current?.findNext(detail, SEARCH_FIND_OPTIONS);
+        }, 50);
+      } else {
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+    };
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('terminal:search', customHandler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener('terminal:search', customHandler);
+    };
   }, [setIsSearchOpen]);
 
   // Initialize xterm.js terminal
@@ -76,6 +94,7 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
       cursorInactiveStyle: 'none',
       disableStdin: true,
       fontSize,
+      lineHeight: 1.15,
       fontFamily: "'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
       theme: {
         background: '#1a1b26',
@@ -106,7 +125,8 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
 
     // Patch registerDecoration to inject foregroundColor for search decorations
     const origRegisterDecoration = term.registerDecoration.bind(term);
-    term.registerDecoration = (opts: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    term.registerDecoration = (opts: Record<string, any>) => {
       if (opts.backgroundColor === SEARCH_MATCH_BG) {
         opts = { ...opts, foregroundColor: SEARCH_MATCH_FG, layer: 'top' };
       } else if (opts.backgroundColor === SEARCH_ACTIVE_BG) {
@@ -220,13 +240,18 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
       if (!(e.metaKey || e.ctrlKey)) return;
       if (e.key === '=' || e.key === '+') {
         e.preventDefault();
-        setFontSize(fontSize + 1);
+        const next = Math.min(32, fontSize + 1);
+        setFontSize(next);
+        showToast(`Font size: ${next}px`);
       } else if (e.key === '-') {
         e.preventDefault();
-        setFontSize(fontSize - 1);
+        const next = Math.max(8, fontSize - 1);
+        setFontSize(next);
+        showToast(`Font size: ${next}px`);
       } else if (e.key === '0') {
         e.preventDefault();
         setFontSize(14);
+        showToast('Font size: 14px (default)');
       }
     };
     window.addEventListener('keydown', handler);

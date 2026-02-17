@@ -1,5 +1,6 @@
 import { ipcMain, BrowserWindow, shell } from 'electron';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { ptyManager } from './pty-manager';
 import { commandHistoryStore } from './persistence/command-history';
@@ -138,7 +139,7 @@ export function registerIpcHandlers(): void {
     'fs:openFile',
     async (_event, filePath: string): Promise<string> => {
       // Only open files under the user's home directory
-      const home = require('os').homedir();
+      const home = os.homedir();
       const resolved = path.resolve(filePath);
       if (!resolved.startsWith(home)) {
         return 'Blocked: path outside home directory';

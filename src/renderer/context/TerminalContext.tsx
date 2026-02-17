@@ -27,6 +27,7 @@ interface TerminalContextValue {
   clearHistory: () => void;
   addStickyCommand: (label: string, command: string) => void;
   removeStickyCommand: (id: string) => void;
+  reorderStickyCommands: (fromIndex: number, toIndex: number) => void;
   togglePalette: () => void;
   setHistoryIndex: (index: number) => void;
   filterHistory: (prefix: string) => string[];
@@ -199,6 +200,17 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
     [stickyCommands]
   );
 
+  const reorderStickyCommands = useCallback(
+    async (fromIndex: number, toIndex: number) => {
+      const updated = [...stickyCommands];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      setStickyCommands(updated);
+      await window.electronAPI.stickySave(updated);
+    },
+    [stickyCommands]
+  );
+
   const togglePalette = useCallback(() => {
     setIsPaletteOpen((prev) => !prev);
   }, []);
@@ -238,6 +250,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       clearHistory,
       addStickyCommand,
       removeStickyCommand,
+      reorderStickyCommands,
       togglePalette,
       setHistoryIndex,
       filterHistory,
@@ -258,6 +271,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       clearHistory,
       addStickyCommand,
       removeStickyCommand,
+      reorderStickyCommands,
       togglePalette,
       filterHistory,
       setFontSize,

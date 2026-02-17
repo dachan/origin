@@ -3,6 +3,8 @@ import { TerminalProvider, useTerminal } from './context/TerminalContext';
 import TerminalOutput from './components/TerminalOutput';
 import CommandInput from './components/CommandInput';
 import CommandPalette from './components/CommandPalette';
+import Toast from './components/Toast';
+import ContextMenu from './components/ContextMenu';
 
 const AppContent: React.FC = () => {
   const { togglePalette } = useTerminal();
@@ -30,6 +32,8 @@ const AppContent: React.FC = () => {
         <CommandInput />
       </TerminalOutput>
       <CommandPalette />
+      <Toast />
+      <ContextMenu />
     </div>
   );
 };
