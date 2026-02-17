@@ -59,6 +59,12 @@ A modern terminal replacement built with Electron, xterm.js, and React. Origin e
 - Forwards keyboard input directly to the PTY
 - Hides command input and gives full focus to the terminal
 
+### Passthrough Mode
+- Toggle with **Cmd+E** for interactive CLI tools that don't use alternate screen (e.g. Claude, Python REPL, Node, SSH)
+- Forwards keystrokes directly to the PTY via xterm.js
+- Toggle button in command input bar, Terminal menu, or keyboard shortcut
+- Banner with exit button displayed when active
+
 ## Keyboard Shortcuts
 
 | Shortcut | Action |
@@ -73,6 +79,7 @@ A modern terminal replacement built with Electron, xterm.js, and React. Origin e
 | **Arrow Up/Down** | Navigate command history |
 | **Cmd+K** | Toggle command palette |
 | **Cmd+Shift+P** | Toggle command palette |
+| **Cmd+E** | Toggle passthrough mode |
 | **Cmd+F** | Find in terminal |
 | **Cmd+=** | Increase font size |
 | **Cmd+-** | Decrease font size |
