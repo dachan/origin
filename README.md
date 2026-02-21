@@ -23,12 +23,14 @@ A modern terminal replacement built with Electron, xterm.js, and React. Origin e
 - Supports filenames with spaces (from `ls` column output)
 - Filters out `ls -l` metadata (permissions, dates, sizes) so only real paths are clickable
 - Links from older `ls` output stay clickable after `cd`ing elsewhere (CWD history tracking)
+- Works over **SSH** — detects directories and files from `ls --color` ANSI colors when the filesystem is remote
 
 ### Command Input
 - Multi-line input with auto-expanding height
 - Autocomplete from command history (prefix-matched, top 10 results)
 - Persistent command history across sessions
 - Syncs with shell history (`~/.zsh_history` / `~/.bash_history`)
+- **Password masking** — automatically detects password prompts (`sudo`, `ssh`, `git`, etc.) and switches to a masked input field; passwords are never saved to history
 
 ### Terminal Search
 - **Cmd+F** to open Find bar
