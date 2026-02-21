@@ -9,6 +9,8 @@ const SKIP_PATTERNS = [
   /^\d+$/, // pure numbers (sizes, link counts)
   /^total$/, // "total" line from ls -l
   /^->$/, // symlink arrow
+  /^~[/$]?$/, // bare tilde or ~/ or ~$ (shell home shorthand, not a real path)
+  /^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:/, // user@host: shell prompt prefix
 ];
 
 // ls -F / ls -G indicator suffixes appended to filenames
@@ -144,7 +146,21 @@ export class FileSystemLinkProvider implements ILinkProvider {
 
     const links: ILink[] = [];
     for (let i = 0; i < results.length; i++) {
-      const { name, type } = results[i];
+      const { name } = results[i];
+      let type = results[i].type;
+      let isRemote = false;
+
+      // Fallback: if local stat found nothing, check terminal cell colors.
+      // ls --color encodes file type in ANSI color (e.g. blue = directory),
+      // so this detects clickable entries in SSH/remote sessions.
+      if (!type) {
+        const colorType = this.getTokenColorType(bufferLineNumber, tokenEntries[i].startCol, tokenEntries[i].token);
+        if (colorType) {
+          type = colorType;
+          isRemote = true;
+        }
+      }
+
       if (!type) continue;
 
       const entry = tokenEntries[i];
@@ -153,8 +169,9 @@ export class FileSystemLinkProvider implements ILinkProvider {
         end: { x: entry.startCol + entry.token.length, y: bufferLineNumber },
       };
 
-      // Build absolute path so clicks work even after cd'ing elsewhere
-      const fullPath = cwd + '/' + name;
+      // For local files build an absolute path; for remote use the bare token
+      // so the cd/open command is interpreted by the remote shell.
+      const fullPath = isRemote ? name : cwd + '/' + name;
 
       links.push({
         range,
@@ -166,12 +183,19 @@ export class FileSystemLinkProvider implements ILinkProvider {
           if (type === 'directory') {
             const escaped = fullPath.replace(/'/g, "'\\''");
             window.electronAPI.ptyWrite(ptyId, `cd '${escaped}'\n`);
-          } else {
+          } else if (!isRemote) {
+            // Can only open files that exist locally
             window.electronAPI.fsOpenFile(fullPath);
           }
         },
         hover: (event: MouseEvent) => {
-          this.showMetadataTooltip(event, fullPath, type, name);
+          if (isRemote) {
+            // No local metadata available; show a simple action hint
+            const action = type === 'directory' ? `cd ${name}` : name;
+            this.showTooltip(event, action);
+          } else {
+            this.showMetadataTooltip(event, fullPath, type, name);
+          }
         },
         leave: () => {
           this.hideTooltip();
@@ -189,6 +213,45 @@ export class FileSystemLinkProvider implements ILinkProvider {
     if (!this.terminal) return null;
     const line = this.terminal.buffer.active.getLine(bufferLineNumber - 1);
     return line ? line.translateToString(true) : null;
+  }
+
+  // Detect file type from the ANSI color of a token's first cell.
+  // ls --color uses standard ANSI colors: blue = directory, cyan = symlink,
+  // green = executable. Works for remote (SSH) sessions where local stat fails.
+  //
+  // xterm.js color mode bitmask values (from 0x03000000 & fg):
+  //   0          = default (no color set)
+  //   0x01000000 = P16  (standard ANSI 16-color palette)
+  //   0x02000000 = P256 (256-color palette; indices 0-15 match ANSI)
+  private getTokenColorType(bufferLineNumber: number, startCol: number, token: string): 'file' | 'directory' | null {
+    // Reject tokens that look like shell prompt segments rather than filenames:
+    // contains @ (user@host), contains : (host:path), ends with $ or # (prompt chars)
+    if (/[@:]|[$#]\s*$/.test(token)) return null;
+
+    if (!this.terminal) return null;
+    const line = this.terminal.buffer.active.getLine(bufferLineNumber - 1);
+    if (!line) return null;
+    const cell = line.getCell(startCol);
+    if (!cell) return null;
+
+    const colorMode = cell.getFgColorMode();
+    // 0x01000000 = P16, 0x02000000 = P256
+    const isP16  = colorMode === 0x01000000;
+    const isP256 = colorMode === 0x02000000;
+    if (!isP16 && !isP256) return null;
+
+    const color = cell.getFgColor();
+    // For P256, only the first 16 indices map to standard ANSI colors
+    if (isP256 && color >= 16) return null;
+
+    // Blue (4) or Bright Blue (12) → directory
+    if (color === 4 || color === 12) return 'directory';
+    // Cyan (6) or Bright Cyan (14) → symlink → navigate like a directory
+    if (color === 6 || color === 14) return 'directory';
+    // Green (2) or Bright Green (10) → executable file
+    if (color === 2 || color === 10) return 'file';
+
+    return null;
   }
 
   private tooltipEl: HTMLElement | null = null;

@@ -4,6 +4,7 @@
   flex-direction: column;
   overflow: hidden;
   background: #1a1b26;
+  gap: 16px;
 }
 
 .terminal-output {
