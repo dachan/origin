@@ -13,7 +13,9 @@ const CommandLineIcon: React.FC = () => (
 
 const CommandInput: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
   const [inputValue, setInputValue] = useState('');
+  const [passwordValue, setPasswordValue] = useState('');
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [autocompleteIndex, setAutocompleteIndex] = useState(-1);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -29,6 +31,8 @@ const CommandInput: React.FC = () => {
     isRawMode,
     isPassthroughMode,
     togglePassthroughMode,
+    isPasswordMode,
+    setIsPasswordMode,
     isPaletteOpen,
     isSearchOpen,
   } = useTerminal();
@@ -235,12 +239,39 @@ const CommandInput: React.FC = () => {
     [filterHistory]
   );
 
+  const handlePasswordKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (ptyId) {
+          window.electronAPI.ptyWrite(ptyId, passwordValue + '\n');
+        }
+        setPasswordValue('');
+        setIsPasswordMode(false);
+      } else if (e.key === 'c' && e.ctrlKey && !e.metaKey) {
+        if (ptyId) {
+          window.electronAPI.ptyWrite(ptyId, '\x03');
+        }
+        setPasswordValue('');
+        setIsPasswordMode(false);
+      }
+    },
+    [ptyId, passwordValue, setIsPasswordMode]
+  );
+
+  // Auto-focus password input when entering password mode
+  useEffect(() => {
+    if (isPasswordMode) {
+      passwordInputRef.current?.focus();
+    }
+  }, [isPasswordMode]);
+
   // Auto-focus the textarea
   useEffect(() => {
-    if (!isRawMode && !isPassthroughMode) {
+    if (!isRawMode && !isPassthroughMode && !isPasswordMode) {
       textareaRef.current?.focus();
     }
-  }, [isRawMode, isPassthroughMode]);
+  }, [isRawMode, isPassthroughMode, isPasswordMode]);
 
   // Adjust height when input changes
   useEffect(() => {
@@ -249,7 +280,7 @@ const CommandInput: React.FC = () => {
 
   // Always keep focus on the textarea when the app is focused
   useEffect(() => {
-    if (isRawMode || isPassthroughMode || isPaletteOpen || isSearchOpen) return;
+    if (isRawMode || isPassthroughMode || isPasswordMode || isPaletteOpen || isSearchOpen) return;
 
     textareaRef.current?.focus();
 
@@ -269,14 +300,14 @@ const CommandInput: React.FC = () => {
       document.removeEventListener('focusin', handleFocusIn);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [isRawMode, isPassthroughMode, isPaletteOpen, isSearchOpen]);
+  }, [isRawMode, isPassthroughMode, isPasswordMode, isPaletteOpen, isSearchOpen]);
 
   // Don't render in raw mode or passthrough mode
   if (isRawMode || isPassthroughMode) return null;
 
   return (
     <div className="command-input-container">
-      {showAutocomplete && (
+      {!isPasswordMode && showAutocomplete && (
         <Autocomplete
           items={autocompleteItems}
           selectedIndex={autocompleteIndex}
@@ -289,19 +320,33 @@ const CommandInput: React.FC = () => {
       )}
       <div className="command-input-row">
         <Prompt />
-        <textarea
-          ref={textareaRef}
-          className="command-textarea"
-          value={inputValue}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          rows={1}
-          placeholder="Type a command..."
-          spellCheck={false}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-        />
+        {isPasswordMode ? (
+          <input
+            ref={passwordInputRef}
+            type="password"
+            className="command-textarea"
+            value={passwordValue}
+            onChange={(e) => setPasswordValue(e.target.value)}
+            onKeyDown={handlePasswordKeyDown}
+            placeholder="Enter password..."
+            autoComplete="current-password"
+            spellCheck={false}
+          />
+        ) : (
+          <textarea
+            ref={textareaRef}
+            className="command-textarea"
+            value={inputValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            rows={1}
+            placeholder="Type a command..."
+            spellCheck={false}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+          />
+        )}
         <button
           className="passthrough-toggle-btn"
           onClick={togglePassthroughMode}

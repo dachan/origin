@@ -23,6 +23,8 @@ interface TerminalContextValue {
   isRawMode: boolean;
   isPassthroughMode: boolean;
   togglePassthroughMode: () => void;
+  isPasswordMode: boolean;
+  setIsPasswordMode: (value: boolean) => void;
   historyIndex: number;
   executeCommand: (command: string) => void;
   removeFromHistory: (command: string) => void;
@@ -38,6 +40,8 @@ interface TerminalContextValue {
 }
 
 const TerminalContext = createContext<TerminalContextValue | null>(null);
+
+const PASSWORD_PROMPT_RE = /password[\s:!?]|passphrase[\s:]/i;
 
 export function useTerminal(): TerminalContextValue {
   const ctx = useContext(TerminalContext);
@@ -57,6 +61,12 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isRawMode, setIsRawMode] = useState(false);
   const [isPassthroughMode, setIsPassthroughMode] = useState(false);
+  const [isPasswordMode, setIsPasswordModeState] = useState(false);
+
+  const setIsPasswordMode = useCallback((value: boolean) => {
+    setIsPasswordModeState(value);
+  }, []);
+
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [fontSize, setFontSizeState] = useState(() => {
     const saved = localStorage.getItem('terminal-font-size');
@@ -127,6 +137,11 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       if (data.includes('\x1b[?1049l')) {
         setIsRawMode(false);
       }
+
+      // Detect password prompts
+      if (PASSWORD_PROMPT_RE.test(data)) {
+        setIsPasswordModeState(true);
+      }
     });
 
     const unsubExit = window.electronAPI.onPtyExit(({ id }) => {
@@ -134,6 +149,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
         terminalRef.current?.write('\r\n[Process exited — restarting shell...]\r\n');
         setIsRawMode(false);
         setIsPassthroughMode(false);
+        setIsPasswordModeState(false);
         spawnPty();
       }
     });
@@ -262,6 +278,8 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       isRawMode,
       isPassthroughMode,
       togglePassthroughMode,
+      isPasswordMode,
+      setIsPasswordMode,
       historyIndex,
       executeCommand,
       removeFromHistory,
@@ -283,6 +301,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       isSearchOpen,
       isRawMode,
       isPassthroughMode,
+      isPasswordMode,
       historyIndex,
       fontSize,
       executeCommand,
