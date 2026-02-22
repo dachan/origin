@@ -1,8 +1,8 @@
 {
-  "name": "origin-sam",
-  "productName": "Origin: Shell Augmentation Manager",
+  "name": "origin",
+  "productName": "Origin",
   "version": "0.1.2",
-  "description": "Origin: Shell Augmentation Manager",
+  "description": "Origin",
   "main": ".webpack/main",
   "private": true,
   "scripts": {

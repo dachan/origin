@@ -1,4 +1,4 @@
-# Origin: Shell Augmentation Manager
+# Origin
 
 > **Early Prototype** — This project is in active early development. Features may be incomplete, APIs may change, and rough edges are expected. Feedback and contributions welcome.
 
