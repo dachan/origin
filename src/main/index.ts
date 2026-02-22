@@ -97,12 +97,12 @@ function buildAppMenu(): void {
       label: app.name,
       submenu: [
         {
-          label: 'About Origin: SAM',
+          label: 'About Origin',
           click: () => {
             dialog.showMessageBox({
               type: 'info',
-              title: 'About Origin: SAM',
-              message: 'Origin: Shell Augmentation Manager',
+              title: 'About Origin',
+              message: 'Origin',
               detail: `Version ${app.getVersion()}\n\nA modern terminal with smart command input, persistent history, and clickable file links.\n\n© David Chan`,
             });
           },

@@ -34,8 +34,8 @@ const config: ForgeConfig = {
     asar: {
       unpack: '**/node_modules/node-pty/**',
     },
-    name: 'Origin Shell Augmentation Manager',
-    executableName: 'origin-sam',
+    name: 'Origin',
+    executableName: 'origin',
     icon: './assets/icon',
     afterCopy: [
       // Copy node-pty into the packaged app's node_modules
