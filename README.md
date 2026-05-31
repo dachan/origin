@@ -2,6 +2,8 @@
 
 > **Early Prototype** — This project is in active early development. Features may be incomplete, APIs may change, and rough edges are expected. Feedback and contributions welcome.
 
+<video src="https://github.com/dachan/origin/raw/main/demo/output/origin-demo.webm" controls width="100%"></video>
+
 A modern terminal replacement built with Electron, xterm.js, and React. Origin enhances the standard shell experience with smart command input, persistent history, pinnable commands, and clickable file/directory links.
 
 ## Features
