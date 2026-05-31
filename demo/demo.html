@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, height=720" />
+  <title>Origin Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 1280px;
+      height: 720px;
+      overflow: hidden;
+      background: #1a1b26;
+      color: #c0caf5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .mono { font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; }
+
+    /* Title bar */
+    .titlebar {
+      height: 28px;
+      background: #1a1b26;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      border-bottom: 1px solid #292e42;
+    }
+    .traffic { display: flex; gap: 6px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot.red { background: #f7768e; }
+    .dot.yellow { background: #e0af68; }
+    .dot.green { background: #9ece6a; }
+    .titlebar-title {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: #565f89;
+      margin-right: 54px;
+    }
+
+    /* App shell */
+    .app {
+      height: calc(720px - 28px);
+      display: flex;
+      flex-direction: column;
+      padding: 16px 16px 8px;
+    }
+
+    .terminal-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .terminal-output {
+      flex: 1;
+      padding: 8px 4px;
+      font-size: 14px;
+      line-height: 1.55;
+      overflow: hidden;
+    }
+
+    .line { white-space: pre-wrap; word-break: break-all; }
+    .prompt { color: #7aa2f7; }
+    .cmd { color: #c0caf5; }
+    .dir { color: #7aa2f7; cursor: pointer; text-decoration: underline; text-decoration-color: transparent; transition: all 0.2s; }
+    .dir.hover { background: rgba(122, 162, 247, 0.15); text-decoration-color: #7aa2f7; border-radius: 2px; }
+    .file { color: #9ece6a; cursor: pointer; transition: all 0.2s; }
+    .file.hover { background: rgba(158, 206, 106, 0.15); border-radius: 2px; }
+    .muted { color: #565f89; }
+    .green { color: #9ece6a; }
+    .yellow { color: #e0af68; }
+    .blue { color: #7aa2f7; }
+    .purple { color: #bb9af7; }
+    .url { color: #73daca; text-decoration: underline; }
+
+    .tooltip {
+      position: absolute;
+      background: #24283b;
+      border: 1px solid #292e42;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 50;
+    }
+    .tooltip.visible { opacity: 1; }
+    .tooltip-row { display: flex; gap: 8px; color: #a9b1d6; }
+    .tooltip-label { color: #565f89; min-width: 52px; }
+
+    /* Search bar */
+    .search-bar {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #1f2335;
+      border-bottom: 1px solid #292e42;
+    }
+    .search-bar.visible { display: flex; }
+    .search-input {
+      flex: 1;
+      background: #1a1b26;
+      border: 1px solid #7aa2f7;
+      border-radius: 4px;
+      color: #c0caf5;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 4px 8px;
+    }
+    .search-btn {
+      width: 24px; height: 24px;
+      background: #292e42;
+      border: 1px solid #3b4261;
+      border-radius: 4px;
+      color: #a9b1d6;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+    }
+    .highlight { background: #e0af68; color: #1a1b26; border-radius: 2px; padding: 0 1px; }
+
+    /* Command input */
+    .input-area {
+      border-top: 1px solid #292e42;
+      padding: 12px;
+      position: relative;
+    }
+    .input-row { display: flex; align-items: center; gap: 8px; }
+    .input-prompt { color: #7aa2f7; font-size: 14px; font-weight: bold; }
+    .input-text {
+      flex: 1;
+      font-size: 14px;
+      color: #c0caf5;
+      min-height: 22px;
+    }
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 16px;
+      background: #7aa2f7;
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .autocomplete {
+      position: absolute;
+      bottom: 100%;
+      left: 12px; right: 12px;
+      background: #24283b;
+      border: 1px solid #292e42;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
+      display: none;
+      overflow: hidden;
+    }
+    .autocomplete.visible { display: block; }
+    .ac-item {
+      padding: 6px 12px;
+      font-size: 13px;
+      color: #a9b1d6;
+    }
+    .ac-item.selected { background: #292e42; color: #c0caf5; }
+
+    .passthrough-btn {
+      width: 22px; height: 22px;
+      border: 1px solid #292e42;
+      border-radius: 4px;
+      color: #565f89;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+    }
+    .passthrough-btn.active { border-color: #e0af68; color: #e0af68; background: rgba(224,175,104,0.1); }
+
+    /* Passthrough banner */
+    .passthrough-banner {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid #292e42;
+      color: #e0af68;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .passthrough-banner.visible { display: flex; }
+    .passthrough-banner span { flex: 1; }
+
+    /* Password input */
+    .password-input {
+      display: none;
+      letter-spacing: 3px;
+      color: #c0caf5;
+    }
+    .password-input.visible { display: inline; }
+
+    /* Palette overlay */
+    .palette-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      padding-top: 80px;
+      z-index: 100;
+    }
+    .palette-overlay.visible { display: flex; }
+    .palette {
+      width: 560px;
+      background: #1f2335;
+      border: 1px solid #292e42;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+    }
+    .palette-header {
+      display: flex;
+      border-bottom: 1px solid #292e42;
+    }
+    .palette-search {
+      flex: 1;
+      padding: 14px 16px;
+      background: transparent;
+      border: none;
+      color: #c0caf5;
+      font-size: 15px;
+      outline: none;
+    }
+    .palette-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      gap: 8px;
+    }
+    .palette-item.selected { background: #292e42; }
+    .palette-item.sticky { border-left: 3px solid #7aa2f7; padding-left: 13px; }
+    .pin-icon { color: #e0af68; font-size: 12px; }
+    .item-content { flex: 1; min-width: 0; }
+    .item-label { font-size: 13px; color: #c0caf5; }
+    .item-cmd { font-size: 12px; color: #565f89; }
+    .palette-footer {
+      display: flex;
+      gap: 16px;
+      padding: 6px 16px;
+      border-top: 1px solid #292e42;
+      font-size: 11px;
+      color: #565f89;
+    }
+    .palette-footer kbd {
+      background: #292e42;
+      border: 1px solid #3b4261;
+      border-radius: 3px;
+      padding: 0 4px;
+      font-size: 10px;
+    }
+
+    /* Context menu */
+    .context-menu {
+      position: fixed;
+      background: #1f2335;
+      border: 1px solid #292e42;
+      border-radius: 6px;
+      padding: 4px 0;
+      min-width: 180px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      display: none;
+      z-index: 200;
+    }
+    .context-menu.visible { display: block; }
+    .ctx-item {
+      padding: 6px 16px;
+      font-size: 13px;
+      color: #c0caf5;
+    }
+    .ctx-item:hover { background: #292e42; }
+    .ctx-sep { height: 1px; background: #292e42; margin: 4px 0; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #292e42;
+      color: #c0caf5;
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      border: 1px solid #3b4261;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 300;
+    }
+    .toast.visible { opacity: 1; }
+
+    /* Scene overlays */
+    .scene-label {
+      position: fixed;
+      top: 40px;
+      right: 24px;
+      background: rgba(31, 35, 53, 0.92);
+      border: 1px solid #292e42;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 13px;
+      color: #a9b1d6;
+      z-index: 500;
+      opacity: 0;
+      transition: opacity 0.4s;
+      max-width: 280px;
+    }
+    .scene-label.visible { opacity: 1; }
+    .scene-label strong { color: #7aa2f7; display: block; margin-bottom: 4px; font-size: 14px; }
+
+    /* Intro / outro */
+    .fullscreen-scene {
+      position: fixed;
+      inset: 0;
+      background: #1a1b26;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s;
+    }
+    .fullscreen-scene.visible { opacity: 1; pointer-events: auto; }
+    .logo { font-size: 72px; font-weight: 700; color: #7aa2f7; letter-spacing: -2px; margin-bottom: 12px; }
+    .tagline { font-size: 22px; color: #a9b1d6; margin-bottom: 32px; }
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 32px;
+      font-size: 14px;
+      color: #565f89;
+    }
+    .features-grid span { color: #9ece6a; margin-right: 6px; }
+    .shortcut-hint {
+      margin-top: 32px;
+      font-size: 13px;
+      color: #565f89;
+    }
+    .shortcut-hint kbd {
+      background: #292e42;
+      border: 1px solid #3b4261;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 12px;
+      color: #a9b1d6;
+      margin: 0 2px;
+    }
+
+    .kbd-badge {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(31,35,53,0.9);
+      border: 1px solid #292e42;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: #565f89;
+      z-index: 400;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .kbd-badge.visible { opacity: 1; }
+    .kbd-badge kbd {
+      background: #292e42;
+      border: 1px solid #3b4261;
+      border-radius: 3px;
+      padding: 1px 5px;
+      color: #a9b1d6;
+      margin-right: 4px;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- Intro -->
+  <div class="fullscreen-scene visible" id="intro">
+    <div class="logo">Origin</div>
+    <div class="tagline">A modern terminal, reimagined</div>
+    <div class="features-grid">
+      <div><span>▸</span> Smart command input</div>
+      <div><span>▸</span> Clickable file links</div>
+      <div><span>▸</span> Command palette</div>
+      <div><span>▸</span> Terminal search</div>
+      <div><span>▸</span> Persistent history</div>
+      <div><span>▸</span> Passthrough mode</div>
+    </div>
+  </div>
+
+  <!-- Outro -->
+  <div class="fullscreen-scene" id="outro">
+    <div class="logo" style="font-size: 56px;">Origin</div>
+    <div class="tagline" style="font-size: 18px; margin-bottom: 24px;">Built with Electron · xterm.js · React</div>
+    <div class="shortcut-hint">
+      <kbd>⌘K</kbd> palette · <kbd>⌘F</kbd> find · <kbd>⌘E</kbd> passthrough · <kbd>⌘=</kbd> font size
+    </div>
+  </div>
+
+  <div class="titlebar">
+    <div class="traffic">
+      <div class="dot red"></div>
+      <div class="dot yellow"></div>
+      <div class="dot green"></div>
+    </div>
+    <div class="titlebar-title">Origin</div>
+  </div>
+
+  <div class="app mono">
+    <div class="terminal-area">
+      <div class="search-bar" id="searchBar">
+        <input class="search-input mono" id="searchInput" readonly value="package.json" />
+        <div class="search-btn">↑</div>
+        <div class="search-btn">↓</div>
+        <div class="search-btn">✕</div>
+      </div>
+
+      <div class="terminal-output" id="terminal">
+        <div class="line"><span class="prompt">~/Projects/origin › </span><span class="cmd">ls -la</span></div>
+        <div class="line muted">total 48</div>
+        <div class="line"><span class="muted">drwxr-xr-x  </span><span class="dir" id="dirSrc">src/</span></div>
+        <div class="line"><span class="muted">drwxr-xr-x  </span><span class="dir" id="dirDemo">demo/</span></div>
+        <div class="line"><span class="muted">-rw-r--r--  </span><span class="file" id="filePkg">package.json</span></div>
+        <div class="line"><span class="muted">-rw-r--r--  </span><span class="file" id="fileReadme">README.md</span></div>
+        <div class="line"><span class="prompt">~/Projects/origin › </span><span class="cmd">git status</span></div>
+        <div class="line green">On branch main</div>
+        <div class="line green">nothing to commit, working tree clean</div>
+        <div class="line"><span class="prompt">~/Projects/origin › </span><span class="cmd">echo "Visit https://github.com for more"</span></div>
+        <div class="line">Visit <span class="url">https://github.com</span> for more</div>
+      </div>
+
+      <div class="passthrough-banner" id="passthroughBanner">
+        <span>⏵ Passthrough Mode — keystrokes go directly to terminal</span>
+        <div class="passthrough-btn">✕</div>
+      </div>
+
+      <div class="input-area" id="inputArea">
+        <div class="autocomplete" id="autocomplete">
+          <div class="ac-item">npm start</div>
+          <div class="ac-item selected">npm run package</div>
+          <div class="ac-item">npm install</div>
+        </div>
+        <div class="input-row">
+          <span class="input-prompt">›</span>
+          <div class="input-text" id="inputText"><span id="typedText"></span><span class="cursor" id="cursor"></span></div>
+          <span class="password-input" id="passwordInput">••••••••</span>
+          <div class="passthrough-btn" id="passthroughBtn">⏵</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tooltip" id="tooltip">
+    <div class="tooltip-row"><span class="tooltip-label">Size</span> 1.2 KB</div>
+    <div class="tooltip-row"><span class="tooltip-label">Modified</span> May 30, 2026</div>
+    <div class="tooltip-row"><span class="tooltip-label">Created</span> Jan 15, 2026</div>
+  </div>
+
+  <div class="palette-overlay" id="palette">
+    <div class="palette">
+      <div class="palette-header">
+        <input class="palette-search mono" id="paletteSearch" readonly placeholder="Search commands..." />
+      </div>
+      <div class="palette-item sticky">
+        <span class="pin-icon">★</span>
+        <div class="item-content">
+          <div class="item-label">Start dev server</div>
+          <div class="item-cmd mono">npm start</div>
+        </div>
+      </div>
+      <div class="palette-item sticky">
+        <span class="pin-icon">★</span>
+        <div class="item-content">
+          <div class="item-label">Build package</div>
+          <div class="item-cmd mono">npm run package</div>
+        </div>
+      </div>
+      <div class="palette-item selected">
+        <div class="item-content">
+          <div class="item-label mono">git status</div>
+        </div>
+      </div>
+      <div class="palette-item">
+        <div class="item-content">
+          <div class="item-label mono">ls -la</div>
+        </div>
+      </div>
+      <div class="palette-item">
+        <div class="item-content">
+          <div class="item-label mono">npm install</div>
+        </div>
+      </div>
+      <div class="palette-footer">
+        <span><kbd>↑↓</kbd> navigate</span>
+        <span><kbd>↵</kbd> run</span>
+        <span><kbd>★</kbd> pin</span>
+        <span><kbd>esc</kbd> close</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="context-menu" id="contextMenu">
+    <div class="ctx-item">Copy</div>
+    <div class="ctx-item">Search in Terminal</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item">Paste</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item">Clear Terminal</div>
+  </div>
+
+  <div class="toast" id="toast">Command starred</div>
+
+  <div class="scene-label" id="sceneLabel">
+    <strong id="sceneTitle"></strong>
+    <span id="sceneDesc"></span>
+  </div>
+
+  <div class="kbd-badge" id="kbdBadge"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const scenes = [
+      { at: 0,    fn: () => {} },
+      { at: 3500, fn: introOut },
+      { at: 4000, fn: () => showScene('Clickable Files', 'Hover files & directories in output — click to open or cd') },
+      { at: 4500, fn: hoverFile },
+      { at: 7000, fn: clickFile },
+      { at: 9000, fn: () => showScene('Smart Command Input', 'Autocomplete from history · multi-line · password masking') },
+      { at: 9500, fn: startTyping },
+      { at: 11000, fn: showAutocomplete },
+      { at: 13500, fn: hideAutocomplete },
+      { at: 14000, fn: () => showScene('Command Palette', 'Star commands · drag to reorder · search history') },
+      { at: 14500, fn: openPalette },
+      { at: 17500, fn: starCommand },
+      { at: 19500, fn: closePalette },
+      { at: 20000, fn: () => showScene('Terminal Search', 'Find text in scrollback with highlighted matches') },
+      { at: 20500, fn: openSearch },
+      { at: 24000, fn: closeSearch },
+      { at: 24500, fn: () => showScene('Context Menu', 'Right-click for copy, search, paste, and clear') },
+      { at: 25000, fn: showContextMenu },
+      { at: 28000, fn: hideContextMenu },
+      { at: 28500, fn: () => showScene('Passthrough Mode', 'Direct keyboard input for REPLs & interactive CLIs') },
+      { at: 29000, fn: enablePassthrough },
+      { at: 32500, fn: disablePassthrough },
+      { at: 33000, fn: () => showScene('Password Masking', 'Auto-detects sudo, ssh, git prompts — never saved to history') },
+      { at: 33500, fn: showPasswordPrompt },
+      { at: 36500, fn: hidePasswordPrompt },
+      { at: 37000, fn: () => showScene('Persistent & Polished', 'GPU rendering · 10K scrollback · Tokyo Night theme') },
+      { at: 40000, fn: hideSceneLabel },
+      { at: 42000, fn: showOutro },
+    ];
+
+    function showScene(title, desc) {
+      $('sceneTitle').textContent = title;
+      $('sceneDesc').textContent = desc;
+      $('sceneLabel').classList.add('visible');
+    }
+    function hideSceneLabel() { $('sceneLabel').classList.remove('visible'); }
+
+    function showKbd(keys) {
+      $('kbdBadge').innerHTML = keys;
+      $('kbdBadge').classList.add('visible');
+    }
+    function hideKbd() { $('kbdBadge').classList.remove('visible'); }
+
+    function introOut() { $('intro').classList.remove('visible'); }
+
+    function hoverFile() {
+      const f = $('filePkg');
+      f.classList.add('hover');
+      const rect = f.getBoundingClientRect();
+      const t = $('tooltip');
+      t.style.left = rect.left + 'px';
+      t.style.top = (rect.bottom + 8) + 'px';
+      t.classList.add('visible');
+    }
+
+    function clickFile() {
+      $('tooltip').classList.remove('visible');
+      $('filePkg').classList.remove('hover');
+      const line = document.createElement('div');
+      line.className = 'line';
+      line.innerHTML = '<span class="purple">Opened package.json with default app</span>';
+      $('terminal').appendChild(line);
+    }
+
+    function startTyping() {
+      const text = 'npm run pac';
+      let i = 0;
+      const iv = setInterval(() => {
+        if (i < text.length) {
+          $('typedText').textContent = text.slice(0, ++i);
+        } else {
+          clearInterval(iv);
+        }
+      }, 120);
+    }
+
+    function showAutocomplete() {
+      $('autocomplete').classList.add('visible');
+    }
+    function hideAutocomplete() {
+      $('autocomplete').classList.remove('visible');
+      $('typedText').textContent = 'npm run package';
+    }
+
+    function openPalette() {
+      $('palette').classList.add('visible');
+      showKbd('<kbd>⌘K</kbd> Command Palette');
+    }
+    function starCommand() {
+      $('toast').classList.add('visible');
+    }
+    function closePalette() {
+      $('palette').classList.remove('visible');
+      $('toast').classList.remove('visible');
+      hideKbd();
+    }
+
+    function openSearch() {
+      $('searchBar').classList.add('visible');
+      showKbd('<kbd>⌘F</kbd> Find in Terminal');
+      const el = $('filePkg');
+      if (el) {
+        el.innerHTML = '<span class="highlight">package.json</span>';
+        el.classList.remove('file');
+      }
+    }
+    function closeSearch() {
+      $('searchBar').classList.remove('visible');
+      hideKbd();
+    }
+
+    function showContextMenu() {
+      $('contextMenu').style.left = '480px';
+      $('contextMenu').style.top = '320px';
+      $('contextMenu').classList.add('visible');
+    }
+    function hideContextMenu() { $('contextMenu').classList.remove('visible'); }
+
+    function enablePassthrough() {
+      $('inputArea').classList.add('hidden');
+      $('passthroughBanner').classList.add('visible');
+      $('passthroughBtn').classList.add('active');
+      showKbd('<kbd>⌘E</kbd> Passthrough Mode');
+      const line = document.createElement('div');
+      line.className = 'line';
+      line.innerHTML = '<span class="yellow">Python 3.12.0</span> <span class="muted">(default)</span>';
+      $('terminal').appendChild(line);
+      const line2 = document.createElement('div');
+      line2.className = 'line';
+      line2.innerHTML = '<span class="prompt">&gt;&gt;&gt; </span><span class="cmd">print("Hello from REPL")</span>';
+      $('terminal').appendChild(line2);
+      const line3 = document.createElement('div');
+      line3.className = 'line green';
+      line3.textContent = 'Hello from REPL';
+      $('terminal').appendChild(line3);
+    }
+    function disablePassthrough() {
+      $('inputArea').classList.remove('hidden');
+      $('passthroughBanner').classList.remove('visible');
+      $('passthroughBtn').classList.remove('active');
+      hideKbd();
+    }
+
+    function showPasswordPrompt() {
+      $('typedText').textContent = '';
+      $('cursor').classList.add('hidden');
+      $('passwordInput').classList.add('visible');
+      const line = document.createElement('div');
+      line.className = 'line';
+      line.innerHTML = '<span class="yellow">[sudo] password for david:</span>';
+      $('terminal').appendChild(line);
+    }
+    function hidePasswordPrompt() {
+      $('passwordInput').classList.remove('visible');
+      $('cursor').classList.remove('hidden');
+    }
+
+    function showOutro() {
+      $('outro').classList.add('visible');
+    }
+
+    // Signal when demo is complete (for Playwright)
+    window.demoComplete = false;
+
+    scenes.forEach(({ at, fn }) => {
+      setTimeout(fn, at);
+    });
+
+    setTimeout(() => {
+      window.demoComplete = true;
+    }, 47000);
+  </script>
+</body>
+</html>

@@ -10,7 +10,8 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "lint": "eslint --ext .ts,.tsx ."
+    "lint": "eslint --ext .ts,.tsx .",
+    "demo:video": "node demo/record-demo.mjs"
   },
   "keywords": [],
   "author": {
@@ -39,6 +40,7 @@
     "eslint-plugin-import": "^2.32.0",
     "fork-ts-checker-webpack-plugin": "^7.3.0",
     "node-loader": "^2.1.0",
+    "playwright": "^1.60.0",
     "style-loader": "^3.3.4",
     "ts-loader": "^9.5.4",
     "typescript": "~4.5.4"
