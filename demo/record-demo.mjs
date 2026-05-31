@@ -1,11 +1,13 @@
 /**
- * Records demo/demo.html to demo/origin-demo.webm using Playwright.
- * Run: node demo/record-demo.mjs
+ * Records demo/demo.html and exports webm, mp4, and gif for README embedding.
+ * Run: npm run demo:video
  */
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
+import { execFileSync } from 'child_process';
+import ffmpegPath from 'ffmpeg-static';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const demoHtml = path.join(__dirname, 'demo.html');
@@ -18,6 +20,10 @@ if (!fs.existsSync(outputDir)) {
 const WIDTH = 1280;
 const HEIGHT = 720;
 const DEMO_DURATION_MS = 48000;
+
+function runFfmpeg(args) {
+  execFileSync(ffmpegPath, args, { stdio: 'inherit' });
+}
 
 console.log('Launching browser for demo recording...');
 
@@ -42,12 +48,36 @@ const video = page.video();
 await context.close();
 await browser.close();
 
-if (video) {
-  const videoPath = await video.path();
-  const finalPath = path.join(outputDir, 'origin-demo.webm');
-  fs.renameSync(videoPath, finalPath);
-  console.log(`\nDemo video saved to: ${finalPath}`);
-} else {
+if (!video) {
   console.error('No video was recorded.');
   process.exit(1);
 }
+
+const webmPath = path.join(outputDir, 'origin-demo.webm');
+fs.renameSync(await video.path(), webmPath);
+console.log(`\nDemo video saved to: ${webmPath}`);
+
+const mp4Path = path.join(outputDir, 'origin-demo.mp4');
+const gifPath = path.join(__dirname, 'demo.gif');
+
+console.log('Converting to MP4...');
+runFfmpeg([
+  '-y',
+  '-i', webmPath,
+  '-c:v', 'libx264',
+  '-pix_fmt', 'yuv420p',
+  '-crf', '28',
+  '-preset', 'fast',
+  mp4Path,
+]);
+console.log(`MP4 saved to: ${mp4Path}`);
+
+console.log('Generating GIF for README...');
+runFfmpeg([
+  '-y',
+  '-i', mp4Path,
+  '-vf', 'fps=8,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5',
+  '-loop', '0',
+  gifPath,
+]);
+console.log(`GIF saved to: ${gifPath}`);

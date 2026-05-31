@@ -4,7 +4,7 @@
 
 A modern terminal replacement built with Electron, xterm.js, and React. Origin enhances the standard shell experience with smart command input, persistent history, pinnable commands, and clickable file/directory links.
 
-[![Origin feature demo](demo/demo-poster.png)](demo/output/origin-demo.webm)
+![Origin feature demo](demo/demo.gif)
 
 ## Features
 
