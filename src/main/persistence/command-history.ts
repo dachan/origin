@@ -78,6 +78,16 @@ class CommandHistoryStore {
     }
   }
 
+  private async clearShellHistory(): Promise<void> {
+    const histPath = this.getShellHistoryPath();
+    if (!histPath) return;
+    try {
+      await writeFile(histPath, '', 'utf-8');
+    } catch {
+      // Silently ignore failures
+    }
+  }
+
   async load(): Promise<string[]> {
     if (!this.cache) {
       const [shellHistory, appHistory] = await Promise.all([
@@ -118,7 +128,7 @@ class CommandHistoryStore {
 
   async clearAll(): Promise<void> {
     this.cache = [];
-    await this.store.save([]);
+    await Promise.all([this.store.save([]), this.clearShellHistory()]);
   }
 
   async append(command: string): Promise<void> {

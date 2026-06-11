@@ -30,7 +30,6 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
   const { ptyId, terminalRef, isRawMode, isPassthroughMode, togglePassthroughMode, cwdHistoryRef, isSearchOpen, setIsSearchOpen, fontSize, setFontSize } = useTerminal();
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
-  const onDataDisposableRef = useRef<{ dispose: () => void } | null>(null);
   const ptyIdRef = useRef<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -168,14 +167,16 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
     // Handle resize
     const resizeObserver = new ResizeObserver(() => {
       fitAddon.fit();
-      if (ptyId) {
-        window.electronAPI.ptyResize(ptyId, term.cols, term.rows);
+      const currentPtyId = ptyIdRef.current;
+      if (currentPtyId) {
+        window.electronAPI.ptyResize(currentPtyId, term.cols, term.rows);
       }
     });
     resizeObserver.observe(containerRef.current);
 
     return () => {
       linkDisposable.dispose();
+      linkProvider.dispose();
       resizeObserver.disconnect();
       term.dispose();
       terminalRef.current = null;
@@ -214,14 +215,12 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
       const disposable = term.onData((data) => {
         window.electronAPI.ptyWrite(ptyId, data);
       });
-      onDataDisposableRef.current = disposable;
 
       // Focus the terminal
       term.focus();
 
       return () => {
         disposable.dispose();
-        onDataDisposableRef.current = null;
       };
     }
   }, [isRawMode, isPassthroughMode, ptyId]);
