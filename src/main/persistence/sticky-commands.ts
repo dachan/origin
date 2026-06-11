@@ -1,11 +1,5 @@
 import { JsonStore } from './store';
-
-export interface StickyCommand {
-  id: string;
-  label: string;
-  command: string;
-  createdAt: number;
-}
+import type { StickyCommand } from '../../shared/types';
 
 class StickyCommandsStore {
   private store = new JsonStore<StickyCommand[]>('sticky-commands.json', []);

@@ -4,7 +4,8 @@ import os from 'os';
 import path from 'path';
 import { ptyManager } from './pty-manager';
 import { commandHistoryStore } from './persistence/command-history';
-import { stickyCommandsStore, StickyCommand } from './persistence/sticky-commands';
+import { stickyCommandsStore } from './persistence/sticky-commands';
+import type { StickyCommand } from '../shared/types';
 
 export function registerIpcHandlers(): void {
   // --- PTY Channels ---

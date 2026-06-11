@@ -40,6 +40,9 @@ export interface CwdHistoryEntry {
 export class FileSystemLinkProvider implements ILinkProvider {
   private ptyIdRef: { current: string | null };
   private cwdHistoryRef: { current: CwdHistoryEntry[] };
+  private handleContextMenu = (): void => {
+    this.hideTooltip();
+  };
 
   constructor(
     ptyIdRef: { current: string | null },
@@ -47,7 +50,12 @@ export class FileSystemLinkProvider implements ILinkProvider {
   ) {
     this.ptyIdRef = ptyIdRef;
     this.cwdHistoryRef = cwdHistoryRef;
-    window.addEventListener('contextmenu', () => this.hideTooltip());
+    window.addEventListener('contextmenu', this.handleContextMenu);
+  }
+
+  dispose(): void {
+    window.removeEventListener('contextmenu', this.handleContextMenu);
+    this.hideTooltip();
   }
 
   provideLinks(

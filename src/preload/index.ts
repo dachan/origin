@@ -1,11 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-
-export interface StickyCommand {
-  id: string;
-  label: string;
-  command: string;
-  createdAt: number;
-}
+import type { StickyCommand } from '../shared/types';
 
 const api = {
   // PTY
