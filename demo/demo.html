@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1280, height=720" />
+  <meta name="color-scheme" content="dark" />
   <title>Origin Demo</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -16,58 +17,82 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
-    .mono { font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; }
-
-    /* Title bar */
-    .titlebar {
-      height: 28px;
-      background: #1a1b26;
-      display: flex;
-      align-items: center;
-      padding: 0 12px;
-      border-bottom: 1px solid #292e42;
-    }
-    .traffic { display: flex; gap: 6px; }
-    .dot { width: 12px; height: 12px; border-radius: 50%; }
-    .dot.red { background: #f7768e; }
-    .dot.yellow { background: #e0af68; }
-    .dot.green { background: #9ece6a; }
-    .titlebar-title {
-      flex: 1;
-      text-align: center;
-      font-size: 12px;
-      color: #565f89;
-      margin-right: 54px;
+    /* Terminal UI — 10% larger for video readability */
+    #ui-root {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: calc(1280px / 1.1);
+      height: calc(720px / 1.1);
+      transform: translate(-50%, -50%) scale(1.1);
+      transform-origin: center center;
     }
 
-    /* App shell */
-    .app {
-      height: calc(720px - 28px);
+    .mono { font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace; }
+
+    /* App shell — matches src/renderer/styles/global.css + terminal.css */
+    .app-container {
+      height: 100%;
       display: flex;
       flex-direction: column;
       padding: 16px 16px 8px;
+      padding-top: calc(28px + 16px);
+      position: relative;
+      background: #1a1b26;
+    }
+    .app-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 28px;
+      background: #1a1b26;
+      z-index: 10;
     }
 
-    .terminal-area {
+    .terminal-wrapper {
       flex: 1;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      background: #1a1b26;
+      gap: 16px;
+      min-height: 0;
     }
 
     .terminal-output {
       flex: 1;
-      padding: 8px 4px;
+      overflow: hidden;
+      padding: 4px 4px 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
       font-size: 14px;
       line-height: 1.55;
-      overflow: hidden;
     }
 
     .line { white-space: pre-wrap; word-break: break-all; }
-    .prompt { color: #7aa2f7; }
+    .shell { color: #c0caf5; }
     .cmd { color: #c0caf5; }
-    .dir { color: #7aa2f7; cursor: pointer; text-decoration: underline; text-decoration-color: transparent; transition: all 0.2s; }
+
+    /* ls column output — matches real terminal ls -C layout */
+    .ls-output {
+      display: flex;
+      gap: 4ch;
+      margin: 0;
+    }
+    .ls-col {
+      display: flex;
+      flex-direction: column;
+    }
+    .ls-col > span {
+      white-space: nowrap;
+    }
+
+    .dir { color: #7aa2f7; cursor: pointer; text-decoration: underline; text-decoration-color: transparent; transition: all 0.15s; }
     .dir.hover { background: rgba(122, 162, 247, 0.15); text-decoration-color: #7aa2f7; border-radius: 2px; }
+    .dir.pressed { background: rgba(122, 162, 247, 0.35); }
     .file { color: #9ece6a; cursor: pointer; transition: all 0.2s; }
     .file.hover { background: rgba(158, 206, 106, 0.15); border-radius: 2px; }
     .muted { color: #565f89; }
@@ -98,47 +123,72 @@
     .search-bar {
       display: none;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       padding: 6px 12px;
       background: #1f2335;
       border-bottom: 1px solid #292e42;
+      flex-shrink: 0;
     }
     .search-bar.visible { display: flex; }
     .search-input {
       flex: 1;
       background: #1a1b26;
-      border: 1px solid #7aa2f7;
+      border: 1px solid #292e42;
       border-radius: 4px;
       color: #c0caf5;
       font-family: inherit;
       font-size: 13px;
       padding: 4px 8px;
+      outline: none;
     }
+    .search-input:focus { border-color: #7aa2f7; }
     .search-btn {
-      width: 24px; height: 24px;
-      background: #292e42;
-      border: 1px solid #3b4261;
+      background: none;
+      border: 1px solid #292e42;
       border-radius: 4px;
-      color: #a9b1d6;
-      display: flex; align-items: center; justify-content: center;
+      color: #565f89;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
       font-size: 11px;
     }
     .highlight { background: #e0af68; color: #1a1b26; border-radius: 2px; padding: 0 1px; }
 
-    /* Command input */
-    .input-area {
-      border-top: 1px solid #292e42;
-      padding: 12px;
+    /* Command input — matches CommandInput.tsx */
+    .command-input-container {
       position: relative;
+      background: #1a1b26;
+      padding: 12px 12px 8px;
+      flex-shrink: 0;
+      border-top: 1px solid #292e42;
     }
-    .input-row { display: flex; align-items: center; gap: 8px; }
-    .input-prompt { color: #7aa2f7; font-size: 14px; font-weight: bold; }
-    .input-text {
-      flex: 1;
+    .command-input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .prompt-indicator {
+      color: #7aa2f7;
       font-size: 14px;
+      line-height: 22px;
+      flex-shrink: 0;
+    }
+    .prompt-arrow { font-weight: bold; }
+    .command-textarea {
+      flex: 1;
+      position: relative;
+      font-size: 14px;
+      line-height: 22px;
       color: #c0caf5;
       min-height: 22px;
     }
+    .input-placeholder {
+      color: #565f89;
+      pointer-events: none;
+    }
+    .input-placeholder.hidden { display: none; }
     .cursor {
       display: inline-block;
       width: 8px;
@@ -149,57 +199,86 @@
     }
     @keyframes blink { 50% { opacity: 0; } }
 
-    .autocomplete {
+    .autocomplete-dropdown {
       position: absolute;
       bottom: 100%;
-      left: 12px; right: 12px;
+      left: 0;
+      right: 0;
       background: #24283b;
       border: 1px solid #292e42;
       border-radius: 6px;
       margin-bottom: 4px;
-      box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
-      display: none;
+      max-height: 300px;
       overflow: hidden;
+      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 100;
+      display: none;
     }
-    .autocomplete.visible { display: block; }
-    .ac-item {
+    .autocomplete-dropdown.visible { display: block; }
+    .autocomplete-item {
       padding: 6px 12px;
       font-size: 13px;
       color: #a9b1d6;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .ac-item.selected { background: #292e42; color: #c0caf5; }
+    .autocomplete-item.selected {
+      background: #292e42;
+      color: #c0caf5;
+    }
 
-    .passthrough-btn {
-      width: 22px; height: 22px;
+    .passthrough-toggle-btn {
+      background: none;
       border: 1px solid #292e42;
       border-radius: 4px;
       color: #565f89;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 10px;
-    }
-    .passthrough-btn.active { border-color: #e0af68; color: #e0af68; background: rgba(224,175,104,0.1); }
-
-    /* Passthrough banner */
-    .passthrough-banner {
-      display: none;
+      display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px;
-      border-top: 1px solid #292e42;
-      color: #e0af68;
-      font-size: 14px;
-      font-weight: 600;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
     }
-    .passthrough-banner.visible { display: flex; }
-    .passthrough-banner span { flex: 1; }
 
-    /* Password input */
     .password-input {
       display: none;
       letter-spacing: 3px;
       color: #c0caf5;
+      flex: 1;
+      font-size: 14px;
+      line-height: 22px;
     }
-    .password-input.visible { display: inline; }
+    .password-input.visible { display: block; }
+
+    /* Passthrough banner */
+    .passthrough-indicator {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 12px 8px;
+      background: #1a1b26;
+      border-top: 1px solid #292e42;
+      color: #e0af68;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 22px;
+      flex-shrink: 0;
+    }
+    .passthrough-indicator.visible { display: flex; }
+    .passthrough-indicator span { flex: 1; }
+    .passthrough-exit-btn {
+      background: none;
+      border: 1px solid #292e42;
+      border-radius: 4px;
+      color: #565f89;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+    }
 
     /* Palette overlay */
     .palette-overlay {
@@ -301,7 +380,7 @@
     }
     .toast.visible { opacity: 1; }
 
-    /* Scene overlays */
+    /* Scene overlays — large callout text (10% smaller than prior 2x sizing) */
     .scene-label {
       position: fixed;
       top: 40px;
@@ -309,18 +388,18 @@
       background: rgba(31, 35, 53, 0.92);
       border: 1px solid #292e42;
       border-radius: 8px;
-      padding: 10px 16px;
-      font-size: 13px;
-      color: #a9b1d6;
+      padding: 12px 18px;
+      font-size: 23px;
+      color: #c0caf5;
       z-index: 500;
       opacity: 0;
       transition: opacity 0.4s;
-      max-width: 280px;
+      max-width: 560px;
     }
     .scene-label.visible { opacity: 1; }
-    .scene-label strong { color: #7aa2f7; display: block; margin-bottom: 4px; font-size: 14px; }
+    .scene-label strong { color: #7aa2f7; display: block; margin-bottom: 6px; font-size: 25px; }
 
-    /* Intro / outro */
+    /* Intro / outro overlays */
     .fullscreen-scene {
       position: fixed;
       inset: 0;
@@ -335,29 +414,29 @@
       transition: opacity 0.6s;
     }
     .fullscreen-scene.visible { opacity: 1; pointer-events: auto; }
-    .logo { font-size: 72px; font-weight: 700; color: #7aa2f7; letter-spacing: -2px; margin-bottom: 12px; }
-    .tagline { font-size: 22px; color: #a9b1d6; margin-bottom: 32px; }
+    .logo { font-size: 130px; font-weight: 700; color: #7aa2f7; letter-spacing: -2px; margin-bottom: 20px; }
+    .tagline { font-size: 40px; color: #c0caf5; margin-bottom: 40px; }
     .features-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px 32px;
-      font-size: 14px;
-      color: #565f89;
+      gap: 16px 40px;
+      font-size: 25px;
+      color: #c0caf5;
     }
-    .features-grid span { color: #9ece6a; margin-right: 6px; }
+    .features-grid span { color: #9ece6a; margin-right: 8px; }
     .shortcut-hint {
-      margin-top: 32px;
-      font-size: 13px;
-      color: #565f89;
+      margin-top: 40px;
+      font-size: 23px;
+      color: #a9b1d6;
     }
     .shortcut-hint kbd {
       background: #292e42;
       border: 1px solid #3b4261;
       border-radius: 4px;
-      padding: 2px 6px;
-      font-size: 12px;
-      color: #a9b1d6;
-      margin: 0 2px;
+      padding: 4px 10px;
+      font-size: 22px;
+      color: #c0caf5;
+      margin: 0 4px;
     }
 
     .kbd-badge {
@@ -367,9 +446,9 @@
       background: rgba(31,35,53,0.9);
       border: 1px solid #292e42;
       border-radius: 6px;
-      padding: 6px 12px;
-      font-size: 12px;
-      color: #565f89;
+      padding: 8px 14px;
+      font-size: 22px;
+      color: #a9b1d6;
       z-index: 400;
       opacity: 0;
       transition: opacity 0.3s;
@@ -379,9 +458,47 @@
       background: #292e42;
       border: 1px solid #3b4261;
       border-radius: 3px;
-      padding: 1px 5px;
-      color: #a9b1d6;
-      margin-right: 4px;
+      padding: 2px 8px;
+      color: #c0caf5;
+      margin-right: 6px;
+      font-size: 20px;
+    }
+
+    /* Demo pointer — shows click into folder */
+    .demo-cursor {
+      position: fixed;
+      width: 28px;
+      height: 28px;
+      pointer-events: none;
+      z-index: 600;
+      opacity: 0;
+      transition: left 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+                  top 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.2s,
+                  transform 0.1s;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+    }
+    .demo-cursor.visible { opacity: 1; }
+    .demo-cursor.clicking { transform: scale(0.82); }
+    .demo-cursor svg { display: block; }
+
+    .click-ripple {
+      position: fixed;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #7aa2f7;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 599;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.4);
+    }
+    .click-ripple.active {
+      animation: clickRipple 0.45s ease-out forwards;
+    }
+    @keyframes clickRipple {
+      0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.4); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(2.8); }
     }
 
     .hidden { display: none !important; }
@@ -394,7 +511,7 @@
     <div class="tagline">A modern terminal, reimagined</div>
     <div class="features-grid">
       <div><span>▸</span> Smart command input</div>
-      <div><span>▸</span> Clickable file links</div>
+      <div><span>▸</span> Clickable files & folders</div>
       <div><span>▸</span> Command palette</div>
       <div><span>▸</span> Terminal search</div>
       <div><span>▸</span> Persistent history</div>
@@ -404,24 +521,16 @@
 
   <!-- Outro -->
   <div class="fullscreen-scene" id="outro">
-    <div class="logo" style="font-size: 56px;">Origin</div>
-    <div class="tagline" style="font-size: 18px; margin-bottom: 24px;">Built with Electron · xterm.js · React</div>
+    <div class="logo" style="font-size: 101px;">Origin</div>
+    <div class="tagline" style="font-size: 32px; margin-bottom: 32px;">Built with Electron · xterm.js · React</div>
     <div class="shortcut-hint">
       <kbd>⌘K</kbd> palette · <kbd>⌘F</kbd> find · <kbd>⌘E</kbd> passthrough · <kbd>⌘=</kbd> font size
     </div>
   </div>
 
-  <div class="titlebar">
-    <div class="traffic">
-      <div class="dot red"></div>
-      <div class="dot yellow"></div>
-      <div class="dot green"></div>
-    </div>
-    <div class="titlebar-title">Origin</div>
-  </div>
-
-  <div class="app mono">
-    <div class="terminal-area">
+  <div id="ui-root">
+  <div class="app-container mono">
+    <div class="terminal-wrapper">
       <div class="search-bar" id="searchBar">
         <input class="search-input mono" id="searchInput" readonly value="package.json" />
         <div class="search-btn">↑</div>
@@ -430,38 +539,62 @@
       </div>
 
       <div class="terminal-output" id="terminal">
-        <div class="line"><span class="prompt">~/Projects/origin › </span><span class="cmd">ls -la</span></div>
-        <div class="line muted">total 48</div>
-        <div class="line"><span class="muted">drwxr-xr-x  </span><span class="dir" id="dirSrc">src/</span></div>
-        <div class="line"><span class="muted">drwxr-xr-x  </span><span class="dir" id="dirDemo">demo/</span></div>
-        <div class="line"><span class="muted">-rw-r--r--  </span><span class="file" id="filePkg">package.json</span></div>
-        <div class="line"><span class="muted">-rw-r--r--  </span><span class="file" id="fileReadme">README.md</span></div>
-        <div class="line"><span class="prompt">~/Projects/origin › </span><span class="cmd">git status</span></div>
-        <div class="line green">On branch main</div>
-        <div class="line green">nothing to commit, working tree clean</div>
-        <div class="line"><span class="prompt">~/Projects/origin › </span><span class="cmd">echo "Visit https://github.com for more"</span></div>
-        <div class="line">Visit <span class="url">https://github.com</span> for more</div>
-      </div>
-
-      <div class="passthrough-banner" id="passthroughBanner">
-        <span>⏵ Passthrough Mode — keystrokes go directly to terminal</span>
-        <div class="passthrough-btn">✕</div>
-      </div>
-
-      <div class="input-area" id="inputArea">
-        <div class="autocomplete" id="autocomplete">
-          <div class="ac-item">npm start</div>
-          <div class="ac-item selected">npm run package</div>
-          <div class="ac-item">npm install</div>
+        <div class="line"><span class="shell">davidchan@Davids-MacBook-Pro-Settled ~/Projects/origin % </span><span class="cmd">ls</span></div>
+        <div class="ls-output" id="rootLs">
+          <div class="ls-col">
+            <span class="dir">demo</span>
+            <span class="dir">scripts</span>
+            <span class="file" id="filePkg">package.json</span>
+            <span class="file">package-lock.json</span>
+          </div>
+          <div class="ls-col">
+            <span class="dir">node_modules</span>
+            <span class="dir">out</span>
+            <span class="file" id="fileReadme">README.md</span>
+          </div>
+          <div class="ls-col">
+            <span class="dir" id="dirSrc">src</span>
+            <span class="dir">public</span>
+            <span class="file">tsconfig.json</span>
+          </div>
+          <div class="ls-col">
+            <span class="dir">assets</span>
+            <span class="dir">build</span>
+            <span class="file">forge.config.ts</span>
+          </div>
         </div>
-        <div class="input-row">
-          <span class="input-prompt">›</span>
-          <div class="input-text" id="inputText"><span id="typedText"></span><span class="cursor" id="cursor"></span></div>
+        <div class="line" id="rootPrompt"><span class="shell">davidchan@Davids-MacBook-Pro-Settled ~/Projects/origin % </span></div>
+      </div>
+
+      <div class="passthrough-indicator" id="passthroughBanner">
+        <span>Passthrough Mode — keystrokes go directly to terminal</span>
+        <div class="passthrough-exit-btn">✕</div>
+      </div>
+
+      <div class="command-input-container" id="inputArea">
+        <div class="autocomplete-dropdown" id="autocomplete">
+          <div class="autocomplete-item">npm start</div>
+          <div class="autocomplete-item selected">npm run package</div>
+          <div class="autocomplete-item">npm install</div>
+          <div class="autocomplete-item">npm run demo:video</div>
+          <div class="autocomplete-item">npm run lint</div>
+        </div>
+        <div class="command-input-row">
+          <span class="prompt-indicator"><span class="prompt-arrow">›</span></span>
+          <div class="command-textarea" id="inputText">
+            <span class="input-placeholder" id="inputPlaceholder">Type a command...</span>
+            <span id="typedText"></span><span class="cursor" id="cursor"></span>
+          </div>
           <span class="password-input" id="passwordInput">••••••••</span>
-          <div class="passthrough-btn" id="passthroughBtn">⏵</div>
+          <div class="passthrough-toggle-btn" id="passthroughBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z"/>
+            </svg>
+          </div>
         </div>
       </div>
     </div>
+  </div>
   </div>
 
   <div class="tooltip" id="tooltip">
@@ -496,7 +629,7 @@
       </div>
       <div class="palette-item">
         <div class="item-content">
-          <div class="item-label mono">ls -la</div>
+          <div class="item-label mono">ls</div>
         </div>
       </div>
       <div class="palette-item">
@@ -531,15 +664,24 @@
 
   <div class="kbd-badge" id="kbdBadge"></div>
 
+  <div class="demo-cursor" id="demoCursor" aria-hidden="true">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 2L4 22L9.5 16.5L14 24L17 22.5L12.5 15L20 15L4 2Z" fill="white" stroke="#1a1b26" stroke-width="1.5" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div class="click-ripple" id="clickRipple"></div>
+
   <script>
     const $ = (id) => document.getElementById(id);
 
     const scenes = [
       { at: 0,    fn: () => {} },
       { at: 3500, fn: introOut },
-      { at: 4000, fn: () => showScene('Clickable Files', 'Hover files & directories in output — click to open or cd') },
-      { at: 4500, fn: hoverFile },
-      { at: 7000, fn: clickFile },
+      { at: 4000, fn: () => showScene('Clickable Directories', 'Run ls — hover a folder, click to cd into it') },
+      { at: 4200, fn: () => moveCursorTo($('dirSrc'), { from: { x: 920, y: 420 } }) },
+      { at: 5000, fn: hoverDir },
+      { at: 6200, fn: clickDir },
+      { at: 6800, fn: hideCursor },
       { at: 9000, fn: () => showScene('Smart Command Input', 'Autocomplete from history · multi-line · password masking') },
       { at: 9500, fn: startTyping },
       { at: 11000, fn: showAutocomplete },
@@ -580,28 +722,129 @@
 
     function introOut() { $('intro').classList.remove('visible'); }
 
-    function hoverFile() {
-      const f = $('filePkg');
-      f.classList.add('hover');
-      const rect = f.getBoundingClientRect();
+    const SHELL = 'davidchan@Davids-MacBook-Pro-Settled';
+
+    function shellPrompt(path) {
+      return `<span class="shell">${SHELL} ${path} % </span>`;
+    }
+
+    function renderLsColumns(items, columns = 4) {
+      const rows = Math.ceil(items.length / columns);
+      const el = document.createElement('div');
+      el.className = 'ls-output';
+      for (let col = 0; col < columns; col++) {
+        const colEl = document.createElement('div');
+        colEl.className = 'ls-col';
+        let hasItems = false;
+        for (let row = 0; row < rows; row++) {
+          const idx = row * columns + col;
+          if (idx >= items.length) continue;
+          hasItems = true;
+          const item = items[idx];
+          const span = document.createElement('span');
+          span.className = item.cls || 'dir';
+          span.textContent = item.name;
+          if (item.id) span.id = item.id;
+          colEl.appendChild(span);
+        }
+        if (hasItems) el.appendChild(colEl);
+      }
+      return el;
+    }
+
+    function setInputPlaceholderVisible(visible) {
+      $('inputPlaceholder').classList.toggle('hidden', !visible);
+    }
+
+    function moveCursorTo(el, { from } = {}) {
+      const cursor = $('demoCursor');
+      const rect = el.getBoundingClientRect();
+      const x = rect.left + rect.width * 0.35;
+      const y = rect.top + rect.height * 0.55;
+
+      if (from) {
+        cursor.style.left = from.x + 'px';
+        cursor.style.top = from.y + 'px';
+        cursor.classList.add('visible');
+        requestAnimationFrame(() => {
+          cursor.style.left = x + 'px';
+          cursor.style.top = y + 'px';
+        });
+      } else {
+        cursor.style.left = x + 'px';
+        cursor.style.top = y + 'px';
+        cursor.classList.add('visible');
+      }
+    }
+
+    function hideCursor() {
+      $('demoCursor').classList.remove('visible', 'clicking');
+    }
+
+    function playClickRipple(x, y) {
+      const ripple = $('clickRipple');
+      ripple.style.left = x + 'px';
+      ripple.style.top = y + 'px';
+      ripple.classList.remove('active');
+      void ripple.offsetWidth;
+      ripple.classList.add('active');
+    }
+
+    function hoverDir() {
+      const d = $('dirSrc');
+      d.classList.add('hover');
+      const rect = d.getBoundingClientRect();
       const t = $('tooltip');
+      t.innerHTML = `
+        <div class="tooltip-row"><span class="tooltip-label">Click</span> cd src</div>
+        <div class="tooltip-row"><span class="tooltip-label">Type</span> directory</div>
+      `;
       t.style.left = rect.left + 'px';
       t.style.top = (rect.bottom + 8) + 'px';
       t.classList.add('visible');
     }
 
-    function clickFile() {
-      $('tooltip').classList.remove('visible');
-      $('filePkg').classList.remove('hover');
-      const line = document.createElement('div');
-      line.className = 'line';
-      line.innerHTML = '<span class="purple">Opened package.json with default app</span>';
-      $('terminal').appendChild(line);
+    function clickDir() {
+      const d = $('dirSrc');
+      const rect = d.getBoundingClientRect();
+      const clickX = rect.left + rect.width * 0.35;
+      const clickY = rect.top + rect.height * 0.55;
+      const cursor = $('demoCursor');
+
+      cursor.classList.add('clicking');
+      d.classList.add('pressed');
+      playClickRipple(clickX + 4, clickY + 4);
+
+      setTimeout(() => {
+        $('tooltip').classList.remove('visible');
+        d.classList.remove('hover', 'pressed');
+        cursor.classList.remove('clicking');
+
+        const cdLine = document.createElement('div');
+        cdLine.className = 'line';
+        cdLine.innerHTML = '<span class="purple">cd src</span>';
+        $('terminal').appendChild(cdLine);
+
+        $('rootPrompt').innerHTML = shellPrompt('~/Projects/origin/src') + '<span class="cmd">ls</span>';
+
+        $('terminal').appendChild(renderLsColumns([
+          { name: 'main', cls: 'dir' },
+          { name: 'preload', cls: 'dir' },
+          { name: 'renderer', cls: 'dir' },
+          { name: 'shared', cls: 'dir' },
+        ]));
+
+        const srcPrompt = document.createElement('div');
+        srcPrompt.className = 'line';
+        srcPrompt.innerHTML = shellPrompt('~/Projects/origin/src');
+        $('terminal').appendChild(srcPrompt);
+      }, 180);
     }
 
     function startTyping() {
       const text = 'npm run pac';
       let i = 0;
+      setInputPlaceholderVisible(false);
       const iv = setInterval(() => {
         if (i < text.length) {
           $('typedText').textContent = text.slice(0, ++i);
@@ -656,7 +899,6 @@
     function enablePassthrough() {
       $('inputArea').classList.add('hidden');
       $('passthroughBanner').classList.add('visible');
-      $('passthroughBtn').classList.add('active');
       showKbd('<kbd>⌘E</kbd> Passthrough Mode');
       const line = document.createElement('div');
       line.className = 'line';
@@ -664,7 +906,7 @@
       $('terminal').appendChild(line);
       const line2 = document.createElement('div');
       line2.className = 'line';
-      line2.innerHTML = '<span class="prompt">&gt;&gt;&gt; </span><span class="cmd">print("Hello from REPL")</span>';
+      line2.innerHTML = '<span class="shell">&gt;&gt;&gt; </span><span class="cmd">print("Hello from REPL")</span>';
       $('terminal').appendChild(line2);
       const line3 = document.createElement('div');
       line3.className = 'line green';
@@ -674,12 +916,12 @@
     function disablePassthrough() {
       $('inputArea').classList.remove('hidden');
       $('passthroughBanner').classList.remove('visible');
-      $('passthroughBtn').classList.remove('active');
       hideKbd();
     }
 
     function showPasswordPrompt() {
       $('typedText').textContent = '';
+      setInputPlaceholderVisible(false);
       $('cursor').classList.add('hidden');
       $('passwordInput').classList.add('visible');
       const line = document.createElement('div');
@@ -690,6 +932,7 @@
     function hidePasswordPrompt() {
       $('passwordInput').classList.remove('visible');
       $('cursor').classList.remove('hidden');
+      setInputPlaceholderVisible(true);
     }
 
     function showOutro() {
