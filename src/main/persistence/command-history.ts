@@ -94,17 +94,14 @@ class CommandHistoryStore {
         this.readShellHistory(),
         this.store.load(),
       ]);
-      // Merge: start with shell history, layer app history on top
-      // Use a Map to deduplicate, keeping the last occurrence (app history wins on recency)
-      const seen = new Map<string, number>();
-      const all = [...shellHistory, ...appHistory];
-      for (let i = 0; i < all.length; i++) {
-        seen.set(all[i], i);
+      // Merge shell and app history, deduplicating so each command keeps
+      // only its most recent position (app history is layered on top).
+      const seen = new Set<string>();
+      for (const cmd of [...shellHistory, ...appHistory]) {
+        seen.delete(cmd);
+        seen.add(cmd);
       }
-      // Sort by original position to preserve order, then deduplicate
-      const merged = [...seen.entries()]
-        .sort((a, b) => a[1] - b[1])
-        .map(([cmd]) => cmd);
+      const merged = [...seen];
       // Trim to max size (keep the most recent)
       if (merged.length > MAX_HISTORY) {
         merged.splice(0, merged.length - MAX_HISTORY);

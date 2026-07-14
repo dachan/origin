@@ -61,11 +61,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isRawMode, setIsRawMode] = useState(false);
   const [isPassthroughMode, setIsPassthroughMode] = useState(false);
-  const [isPasswordMode, setIsPasswordModeState] = useState(false);
-
-  const setIsPasswordMode = useCallback((value: boolean) => {
-    setIsPasswordModeState(value);
-  }, []);
+  const [isPasswordMode, setIsPasswordMode] = useState(false);
 
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [fontSize, setFontSizeState] = useState(() => {
@@ -140,7 +136,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Detect password prompts
       if (PASSWORD_PROMPT_RE.test(data)) {
-        setIsPasswordModeState(true);
+        setIsPasswordMode(true);
       }
     });
 
@@ -149,7 +145,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
         terminalRef.current?.write('\r\n[Process exited — restarting shell...]\r\n');
         setIsRawMode(false);
         setIsPassthroughMode(false);
-        setIsPasswordModeState(false);
+        setIsPasswordMode(false);
         spawnPty();
       }
     });
@@ -191,16 +187,13 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
     [ptyId]
   );
 
-  const removeFromHistory = useCallback(
-    (command: string) => {
-      window.electronAPI.historyRemove(command);
-      setHistory((prev) => prev.filter((c) => c !== command));
-    },
-    []
-  );
+  const removeFromHistory = useCallback((command: string) => {
+    window.electronAPI.historyRemove(command).catch(() => { /* best-effort */ });
+    setHistory((prev) => prev.filter((c) => c !== command));
+  }, []);
 
   const clearHistory = useCallback(() => {
-    window.electronAPI.historyClear();
+    window.electronAPI.historyClear().catch(() => { /* best-effort */ });
     setHistory([]);
   }, []);
 

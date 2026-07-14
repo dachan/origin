@@ -46,8 +46,11 @@ class PtyManager {
     callback: (exitCode: number, signal: number) => void
   ): void {
     this.sessions.get(id)?.process.onExit(({ exitCode, signal }) => {
+      // If the session was already removed via kill(), this was a deliberate
+      // shutdown — don't notify the renderer (it would respawn the shell).
+      if (!this.sessions.delete(id)) return;
+      this.cwdCache.delete(id);
       callback(exitCode, signal);
-      this.sessions.delete(id);
     });
   }
 
@@ -64,7 +67,7 @@ class PtyManager {
     try {
       const cwd = await new Promise<string>((resolve, reject) => {
         // Find the foreground child process of the PTY
-        execFile('pgrep', ['-P', String(pid)], (err, stdout) => {
+        execFile('pgrep', ['-P', String(pid)], (_err, stdout) => {
           const childPid = (stdout || '').trim().split('\n').pop() || String(pid);
           // Use lsof to get the CWD of the child process
           execFile(
@@ -90,10 +93,11 @@ class PtyManager {
 
   kill(id: string): void {
     const session = this.sessions.get(id);
-    if (session) {
-      session.process.kill();
-      this.sessions.delete(id);
-    }
+    if (!session) return;
+    // Remove from the map first so the onExit handler knows this is deliberate
+    this.sessions.delete(id);
+    this.cwdCache.delete(id);
+    session.process.kill();
   }
 
   disposeAll(): void {

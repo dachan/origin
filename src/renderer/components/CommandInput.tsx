@@ -48,8 +48,15 @@ const CommandInput: React.FC = () => {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      // --- Double Escape = clear terminal ---
+      // --- Escape: dismiss autocomplete, or double-tap to clear terminal ---
       if (e.key === 'Escape') {
+        if (showAutocomplete && autocompleteItems.length > 0) {
+          // Dismissing autocomplete shouldn't arm the double-tap clear
+          e.preventDefault();
+          setShowAutocomplete(false);
+          lastEscRef.current = 0;
+          return;
+        }
         const now = Date.now();
         if (now - lastEscRef.current < 250) {
           e.preventDefault();
@@ -57,9 +64,10 @@ const CommandInput: React.FC = () => {
           if (ptyId) {
             window.electronAPI.ptyWrite(ptyId, 'clear\n');
           }
-          return;
+        } else {
+          lastEscRef.current = now;
         }
-        lastEscRef.current = now;
+        return;
       }
 
       // --- Autocomplete navigation ---
@@ -80,23 +88,13 @@ const CommandInput: React.FC = () => {
         }
         if (e.key === 'Tab') {
           e.preventDefault();
-          if (autocompleteIndex >= 0) {
-            setInputValue(autocompleteItems[autocompleteIndex]);
-            setShowAutocomplete(false);
-          } else if (autocompleteItems.length > 0) {
-            setInputValue(autocompleteItems[0]);
-            setShowAutocomplete(false);
-          }
+          setInputValue(autocompleteItems[Math.max(autocompleteIndex, 0)]);
+          setShowAutocomplete(false);
           return;
         }
         if (e.key === 'Enter' && autocompleteIndex >= 0) {
           e.preventDefault();
           setInputValue(autocompleteItems[autocompleteIndex]);
-          setShowAutocomplete(false);
-          return;
-        }
-        if (e.key === 'Escape') {
-          e.preventDefault();
           setShowAutocomplete(false);
           return;
         }

@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, shell } from 'electron';
+import { ipcMain, shell } from 'electron';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -12,20 +12,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     'pty:spawn',
-    async (_event, { cols, rows }: { cols: number; rows: number }) => {
+    async (event, { cols, rows }: { cols: number; rows: number }) => {
       const { id } = ptyManager.spawn(cols, rows);
 
       // Set up data streaming back to the renderer
       ptyManager.onData(id, (data: string) => {
-        if (_event.sender.isDestroyed()) return;
-        const win = BrowserWindow.fromWebContents(_event.sender);
-        win?.webContents.send('pty:data', { id, data });
+        if (event.sender.isDestroyed()) return;
+        event.sender.send('pty:data', { id, data });
       });
 
       ptyManager.onExit(id, (exitCode: number, signal: number) => {
-        if (_event.sender.isDestroyed()) return;
-        const win = BrowserWindow.fromWebContents(_event.sender);
-        win?.webContents.send('pty:exit', { id, exitCode, signal });
+        if (event.sender.isDestroyed()) return;
+        event.sender.send('pty:exit', { id, exitCode, signal });
       });
 
       return { id };
@@ -96,7 +94,11 @@ export function registerIpcHandlers(): void {
             const fullPath = path.resolve(cwd, token);
             // Prevent path traversal outside the CWD
             const rel = path.relative(cwd, fullPath);
-            if (rel.startsWith('..') || path.isAbsolute(rel)) {
+            if (
+              rel === '..' ||
+              rel.startsWith('..' + path.sep) ||
+              path.isAbsolute(rel)
+            ) {
               return { name: token, type: null };
             }
             const stat = await fs.promises.stat(fullPath);
@@ -139,10 +141,12 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     'fs:openFile',
     async (_event, filePath: string): Promise<string> => {
-      // Only open files under the user's home directory
+      // Only open files under the user's home directory.
+      // Compare against a path boundary so a sibling directory like
+      // "/Users/nameEvil" doesn't pass a bare prefix check.
       const home = os.homedir();
       const resolved = path.resolve(filePath);
-      if (!resolved.startsWith(home)) {
+      if (resolved !== home && !resolved.startsWith(home + path.sep)) {
         return 'Blocked: path outside home directory';
       }
       return shell.openPath(resolved);

@@ -1,6 +1,16 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { StickyCommand } from '../shared/types';
 
+// Subscribe to an IPC channel; returns an unsubscribe function.
+function subscribe<T>(channel: string, callback: (payload: T) => void): () => void {
+  const handler = (_event: Electron.IpcRendererEvent, payload: T) =>
+    callback(payload);
+  ipcRenderer.on(channel, handler);
+  return () => {
+    ipcRenderer.removeListener(channel, handler);
+  };
+}
+
 const api = {
   // PTY
   ptySpawn: (cols: number, rows: number): Promise<{ id: string }> =>
@@ -16,16 +26,7 @@ const api = {
 
   onPtyData: (
     callback: (payload: { id: string; data: string }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      payload: { id: string; data: string }
-    ) => callback(payload);
-    ipcRenderer.on('pty:data', handler);
-    return () => {
-      ipcRenderer.removeListener('pty:data', handler);
-    };
-  },
+  ): (() => void) => subscribe('pty:data', callback),
 
   onPtyExit: (
     callback: (payload: {
@@ -33,16 +34,7 @@ const api = {
       exitCode: number;
       signal: number;
     }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      payload: { id: string; exitCode: number; signal: number }
-    ) => callback(payload);
-    ipcRenderer.on('pty:exit', handler);
-    return () => {
-      ipcRenderer.removeListener('pty:exit', handler);
-    };
-  },
+  ): (() => void) => subscribe('pty:exit', callback),
 
   // Persistence
   historyLoad: (): Promise<string[]> => ipcRenderer.invoke('history:load'),
@@ -80,13 +72,8 @@ const api = {
     ipcRenderer.invoke('fs:openFile', filePath),
 
   // Menu events
-  onTogglePassthrough: (callback: () => void): (() => void) => {
-    const handler = () => callback();
-    ipcRenderer.on('terminal:toggle-passthrough', handler);
-    return () => {
-      ipcRenderer.removeListener('terminal:toggle-passthrough', handler);
-    };
-  },
+  onTogglePassthrough: (callback: () => void): (() => void) =>
+    subscribe('terminal:toggle-passthrough', callback),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);

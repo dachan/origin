@@ -10,7 +10,6 @@ interface MenuPosition {
 interface MenuItem {
   label: string;
   action: () => void;
-  separator?: false;
 }
 
 interface MenuSeparator {
@@ -77,27 +76,23 @@ const ContextMenu: React.FC = () => {
           label: 'Paste',
           action: async () => {
             const text = await navigator.clipboard.readText();
-            if (text) {
-              // Insert into the textarea by dispatching an input event
-              const textarea = inputEl?.querySelector('textarea');
-              if (textarea) {
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                const current = textarea.value;
-                const newValue = current.slice(0, start) + text + current.slice(end);
-                // Use native setter to trigger React's onChange
-                const nativeSetter = Object.getOwnPropertyDescriptor(
-                  window.HTMLTextAreaElement.prototype, 'value'
-                )?.set;
-                nativeSetter?.call(textarea, newValue);
-                textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                // Set cursor after pasted text
-                const newPos = start + text.length;
-                requestAnimationFrame(() => {
-                  textarea.selectionStart = newPos;
-                  textarea.selectionEnd = newPos;
-                });
-              }
+            if (text && textarea) {
+              const start = textarea.selectionStart;
+              const end = textarea.selectionEnd;
+              const current = textarea.value;
+              const newValue = current.slice(0, start) + text + current.slice(end);
+              // Use native setter to trigger React's onChange
+              const nativeSetter = Object.getOwnPropertyDescriptor(
+                window.HTMLTextAreaElement.prototype, 'value'
+              )?.set;
+              nativeSetter?.call(textarea, newValue);
+              textarea.dispatchEvent(new Event('input', { bubbles: true }));
+              // Set cursor after pasted text
+              const newPos = start + text.length;
+              requestAnimationFrame(() => {
+                textarea.selectionStart = newPos;
+                textarea.selectionEnd = newPos;
+              });
             }
             close();
           },
@@ -157,15 +152,11 @@ const ContextMenu: React.FC = () => {
       style={{ left: position.x, top: position.y }}
     >
       {items.map((entry, i) =>
-        'separator' in entry && entry.separator ? (
+        'separator' in entry ? (
           <div key={i} className="context-menu-separator" />
         ) : (
-          <div
-            key={i}
-            className="context-menu-item"
-            onClick={(entry as MenuItem).action}
-          >
-            {(entry as MenuItem).label}
+          <div key={i} className="context-menu-item" onClick={entry.action}>
+            {entry.label}
           </div>
         )
       )}

@@ -27,15 +27,20 @@ interface WindowState {
 function loadWindowState(): WindowState {
   try {
     const data = fs.readFileSync(STATE_FILE, 'utf-8');
-    return JSON.parse(data);
+    const state = JSON.parse(data) as WindowState;
+    if (typeof state.width === 'number' && typeof state.height === 'number') {
+      return state;
+    }
   } catch {
-    return { width: 900, height: 700 };
+    // fall through to defaults
   }
+  return { width: 900, height: 700 };
 }
 
-let lastNormalBounds: Electron.Rectangle | null = null;
-
-function saveWindowState(win: BrowserWindow): void {
+function saveWindowState(
+  win: BrowserWindow,
+  lastNormalBounds: Electron.Rectangle | null
+): void {
   const isMaximized = win.isMaximized();
   const bounds = isMaximized && lastNormalBounds ? lastNormalBounds : win.getBounds();
   const state: WindowState = { ...bounds, isMaximized };
@@ -51,7 +56,7 @@ let mainWindow: BrowserWindow | null = null;
 const createWindow = (): void => {
   const state = loadWindowState();
 
-  mainWindow = new BrowserWindow({
+  const win = new BrowserWindow({
     x: state.x,
     y: state.y,
     width: state.width,
@@ -69,25 +74,28 @@ const createWindow = (): void => {
   });
 
   if (state.isMaximized) {
-    mainWindow.maximize();
+    win.maximize();
   }
 
   // Track bounds before maximize so we can restore them
-  mainWindow.on('resize', () => {
-    if (mainWindow && !mainWindow.isMaximized()) {
-      lastNormalBounds = mainWindow.getBounds();
+  let lastNormalBounds: Electron.Rectangle | null = null;
+  const trackBounds = () => {
+    if (!win.isMaximized()) {
+      lastNormalBounds = win.getBounds();
     }
-  });
-  mainWindow.on('move', () => {
-    if (mainWindow && !mainWindow.isMaximized()) {
-      lastNormalBounds = mainWindow.getBounds();
-    }
-  });
-  mainWindow.on('close', () => {
-    if (mainWindow) saveWindowState(mainWindow);
+  };
+  win.on('resize', trackBounds);
+  win.on('move', trackBounds);
+  win.on('close', () => saveWindowState(win, lastNormalBounds));
+  win.on('closed', () => {
+    // On macOS the app stays alive after the window closes — kill the shells
+    // so they don't keep running with no window attached.
+    ptyManager.disposeAll();
+    if (mainWindow === win) mainWindow = null;
   });
 
-  mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
+  win.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
+  mainWindow = win;
 };
 
 // --- Application menu with About ---

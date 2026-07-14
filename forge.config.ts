@@ -62,6 +62,10 @@ const config: ForgeConfig = {
     new AutoUnpackNativesPlugin({}),
     new WebpackPlugin({
       mainConfig,
+      // Avoid the default port 3000, which commonly clashes with other dev
+      // servers (Next.js etc.) and prevents the app from launching
+      port: 3816,
+      loggerPort: 9816,
       renderer: {
         config: rendererConfig,
         entryPoints: [
