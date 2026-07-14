@@ -372,13 +372,24 @@
 
     .password-input {
       display: none;
-      letter-spacing: 3px;
-      color: var(--fg);
       flex: 1;
+      min-width: 0;
+      height: 22px;
       font-size: 14px;
       line-height: 22px;
+      letter-spacing: 2px;
+      color: var(--fg);
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
     }
-    .password-input.visible { display: block; }
+    .password-input.visible {
+      display: inline-flex;
+      align-items: center;
+    }
+    /* When password mode is active, hide the normal command field so dots
+       sit flush next to the prompt (same layout as the real input swap). */
+    .command-input-row.password-mode .command-textarea { display: none; }
 
     .passthrough-indicator {
       display: none;
@@ -1296,6 +1307,7 @@
       $("cursor").classList.add("hidden");
       $("passwordInput").textContent = "";
       $("passwordInput").classList.add("visible");
+      document.querySelector(".command-input-row")?.classList.add("password-mode");
       $("terminal").innerHTML = "";
       appendLine(
         shellPrompt("~/Projects/origin") + '<span class="cmd">sudo -v</span>',
@@ -1307,6 +1319,7 @@
     function hidePasswordPrompt() {
       $("passwordInput").classList.remove("visible");
       $("passwordInput").textContent = "";
+      document.querySelector(".command-input-row")?.classList.remove("password-mode");
       $("cursor").classList.remove("hidden");
       setInputPlaceholderVisible(true);
       appendLine('<span class="muted"># credentials cached · never saved to history</span>');
