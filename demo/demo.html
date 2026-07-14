@@ -8,50 +8,120 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    :root {
+      --bg: #0b0c10;
+      --bg-wash: #12141c;
+      --tokyo: #1a1b26;
+      --tokyo-elevated: #1f2335;
+      --tokyo-panel: #24283b;
+      --tokyo-border: #292e42;
+      --tokyo-border-strong: #3b4261;
+      --fg: #c0caf5;
+      --fg-dim: #a9b1d6;
+      --muted: #565f89;
+      --blue: #7aa2f7;
+      --green: #9ece6a;
+      --yellow: #e0af68;
+      --purple: #bb9af7;
+      --cyan: #73daca;
+      --red: #f7768e;
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+    }
+
     body {
       width: 1280px;
       height: 720px;
       overflow: hidden;
-      background: #1a1b26;
-      color: #c0caf5;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background:
+        radial-gradient(1200px 680px at 50% 18%, rgba(122, 162, 247, 0.08), transparent 58%),
+        radial-gradient(900px 520px at 50% 100%, rgba(26, 27, 38, 0.85), transparent 55%),
+        linear-gradient(180deg, #101218 0%, var(--bg) 48%, #08090d 100%);
+      color: var(--fg);
+      font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* Terminal UI — 10% larger for video readability */
-    #ui-root {
+    .mono {
+      font-family: "SF Mono", Menlo, Monaco, "Courier New", monospace;
+      font-variant-ligatures: none;
+    }
+
+    /* Floating macOS window — matches real Origin screenshots */
+    .stage {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      width: calc(1280px / 1.1);
-      height: calc(720px / 1.1);
-      transform: translate(-50%, -50%) scale(1.1);
-      transform-origin: center center;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: scale(0.972) translateY(10px);
+      transition:
+        opacity 0.7s var(--ease-out),
+        transform 0.85s var(--ease-out);
+    }
+    .stage.visible {
+      opacity: 1;
+      transform: scale(1) translateY(0);
     }
 
-    .mono { font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace; }
+    .window {
+      width: 1020px;
+      height: 590px;
+      background: var(--tokyo);
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.05),
+        0 1px 1px rgba(0, 0, 0, 0.18),
+        0 28px 70px rgba(0, 0, 0, 0.55),
+        0 10px 24px rgba(0, 0, 0, 0.35);
+    }
 
-    /* App shell — matches src/renderer/styles/global.css + terminal.css */
+    .titlebar {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      background: var(--tokyo);
+      border-bottom: 1px solid rgba(41, 46, 66, 0.7);
+      position: relative;
+      z-index: 20;
+    }
+
+    .traffic {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .traffic span {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.18);
+    }
+    .traffic .close { background: #ff5f57; }
+    .traffic .min { background: #febc2e; }
+    .traffic .zoom { background: #28c840; }
+
+    .titlebar-title {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      color: var(--muted);
+    }
+
     .app-container {
-      height: 100%;
+      height: calc(100% - 38px);
       display: flex;
       flex-direction: column;
-      padding: 16px 16px 8px;
-      padding-top: calc(28px + 16px);
+      padding: 14px 16px 8px;
       position: relative;
-      background: #1a1b26;
-    }
-    body.scene-active .app-container {
-      padding-top: calc(28px + 52px + 16px);
-    }
-    .app-container::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 28px;
-      background: #1a1b26;
-      z-index: 10;
+      background: var(--tokyo);
     }
 
     .terminal-wrapper {
@@ -59,27 +129,26 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      background: #1a1b26;
-      gap: 16px;
+      background: var(--tokyo);
+      gap: 14px;
       min-height: 0;
     }
 
     .terminal-output {
       flex: 1;
       overflow: hidden;
-      padding: 4px 4px 0;
+      padding: 2px 2px 0;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      font-size: 14px;
+      font-size: 13.5px;
       line-height: 1.55;
     }
 
     .line { white-space: pre-wrap; word-break: break-all; }
-    .shell { color: #c0caf5; }
-    .cmd { color: #c0caf5; }
+    .shell { color: var(--fg); }
+    .cmd { color: var(--fg); }
 
-    /* ls column output — matches real terminal ls -C layout */
     .ls-output {
       display: flex;
       gap: 4ch;
@@ -89,83 +158,122 @@
       display: flex;
       flex-direction: column;
     }
-    .ls-col > span {
-      white-space: nowrap;
-    }
+    .ls-col > span { white-space: nowrap; }
 
-    .dir { color: #7aa2f7; cursor: pointer; text-decoration: underline; text-decoration-color: transparent; transition: all 0.15s; }
-    .dir.hover { background: rgba(122, 162, 247, 0.15); text-decoration-color: #7aa2f7; border-radius: 2px; }
-    .dir.pressed { background: rgba(122, 162, 247, 0.35); }
-    .file { color: #9ece6a; cursor: pointer; transition: all 0.2s; }
-    .file.hover { background: rgba(158, 206, 106, 0.15); border-radius: 2px; }
-    .muted { color: #565f89; }
-    .green { color: #9ece6a; }
-    .yellow { color: #e0af68; }
-    .blue { color: #7aa2f7; }
-    .purple { color: #bb9af7; }
-    .url { color: #73daca; text-decoration: underline; }
+    .dir {
+      color: var(--blue);
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-color: transparent;
+      transition: background 0.18s ease, text-decoration-color 0.18s ease;
+      border-radius: 2px;
+    }
+    .dir.hover {
+      background: rgba(122, 162, 247, 0.16);
+      text-decoration-color: var(--blue);
+    }
+    .dir.pressed { background: rgba(122, 162, 247, 0.32); }
+    .file {
+      color: var(--green);
+      cursor: pointer;
+      transition: background 0.18s ease;
+      border-radius: 2px;
+    }
+    .file.hover { background: rgba(158, 206, 106, 0.15); }
+    .muted { color: var(--muted); }
+    .green { color: var(--green); }
+    .yellow { color: var(--yellow); }
+    .blue { color: var(--blue); }
+    .purple { color: var(--purple); }
+    .cyan { color: var(--cyan); }
+
+    .fade-in-line {
+      opacity: 0;
+      transform: translateY(4px);
+      animation: lineIn 0.35s var(--ease-out) forwards;
+    }
+    @keyframes lineIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
 
     .tooltip {
       position: absolute;
-      background: #24283b;
-      border: 1px solid #292e42;
-      border-radius: 6px;
+      background: rgba(36, 40, 59, 0.96);
+      border: 1px solid var(--tokyo-border);
+      border-radius: 8px;
       padding: 8px 12px;
       font-size: 12px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.42);
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.2s;
+      transform: translateY(4px);
+      transition: opacity 0.22s var(--ease-soft), transform 0.22s var(--ease-soft);
       z-index: 50;
+      backdrop-filter: blur(12px);
     }
-    .tooltip.visible { opacity: 1; }
-    .tooltip-row { display: flex; gap: 8px; color: #a9b1d6; }
-    .tooltip-label { color: #565f89; min-width: 52px; }
+    .tooltip.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .tooltip-row { display: flex; gap: 10px; color: var(--fg-dim); }
+    .tooltip-label { color: var(--muted); min-width: 52px; }
 
-    /* Search bar */
     .search-bar {
       display: none;
       align-items: center;
-      gap: 4px;
-      padding: 6px 12px;
-      background: #1f2335;
-      border-bottom: 1px solid #292e42;
+      gap: 6px;
+      padding: 7px 12px;
+      background: var(--tokyo-elevated);
+      border: 1px solid var(--tokyo-border);
+      border-radius: 8px;
+      margin-bottom: 2px;
       flex-shrink: 0;
+      opacity: 0;
+      transform: translateY(-6px);
     }
-    .search-bar.visible { display: flex; }
+    .search-bar.visible {
+      display: flex;
+      animation: barIn 0.28s var(--ease-out) forwards;
+    }
+    @keyframes barIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
     .search-input {
       flex: 1;
-      background: #1a1b26;
-      border: 1px solid #292e42;
-      border-radius: 4px;
-      color: #c0caf5;
+      background: var(--tokyo);
+      border: 1px solid var(--tokyo-border);
+      border-radius: 5px;
+      color: var(--fg);
       font-family: inherit;
       font-size: 13px;
-      padding: 4px 8px;
+      padding: 5px 9px;
       outline: none;
     }
-    .search-input:focus { border-color: #7aa2f7; }
     .search-btn {
       background: none;
-      border: 1px solid #292e42;
-      border-radius: 4px;
-      color: #565f89;
+      border: 1px solid var(--tokyo-border);
+      border-radius: 5px;
+      color: var(--muted);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
-      font-size: 11px;
+      width: 26px;
+      height: 26px;
+      font-size: 12px;
     }
-    .highlight { background: #e0af68; color: #1a1b26; border-radius: 2px; padding: 0 1px; }
+    .highlight {
+      background: var(--yellow);
+      color: var(--tokyo);
+      border-radius: 2px;
+      padding: 0 1px;
+    }
 
-    /* Command input — matches CommandInput.tsx */
     .command-input-container {
       position: relative;
-      background: #1a1b26;
-      padding: 12px 12px 8px;
+      background: var(--tokyo);
+      padding: 12px 4px 6px;
       flex-shrink: 0;
-      border-top: 1px solid #292e42;
+      border-top: 1px solid var(--tokyo-border);
     }
     .command-input-row {
       display: flex;
@@ -173,32 +281,33 @@
       gap: 8px;
     }
     .prompt-indicator {
-      color: #7aa2f7;
+      color: var(--blue);
       font-size: 14px;
       line-height: 22px;
       flex-shrink: 0;
     }
-    .prompt-arrow { font-weight: bold; }
+    .prompt-arrow { font-weight: 700; }
     .command-textarea {
       flex: 1;
       position: relative;
       font-size: 14px;
       line-height: 22px;
-      color: #c0caf5;
+      color: var(--fg);
       min-height: 22px;
     }
     .input-placeholder {
-      color: #565f89;
+      color: var(--muted);
       pointer-events: none;
     }
     .input-placeholder.hidden { display: none; }
     .cursor {
       display: inline-block;
-      width: 8px;
+      width: 7px;
       height: 16px;
-      background: #7aa2f7;
+      background: var(--blue);
       vertical-align: text-bottom;
-      animation: blink 1s step-end infinite;
+      margin-left: 1px;
+      animation: blink 1.05s step-end infinite;
     }
     @keyframes blink { 50% { opacity: 0; } }
 
@@ -207,214 +316,343 @@
       bottom: 100%;
       left: 0;
       right: 0;
-      background: #24283b;
-      border: 1px solid #292e42;
-      border-radius: 6px;
-      margin-bottom: 4px;
-      max-height: 300px;
+      background: rgba(36, 40, 59, 0.97);
+      border: 1px solid var(--tokyo-border);
+      border-radius: 8px;
+      margin-bottom: 6px;
+      max-height: 280px;
       overflow: hidden;
-      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.38);
       z-index: 100;
       display: none;
+      opacity: 0;
+      transform: translateY(6px) scale(0.985);
+      transform-origin: bottom center;
+      backdrop-filter: blur(14px);
     }
-    .autocomplete-dropdown.visible { display: block; }
+    .autocomplete-dropdown.visible {
+      display: block;
+      animation: popUp 0.26s var(--ease-out) forwards;
+    }
+    @keyframes popUp {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
     .autocomplete-item {
-      padding: 6px 12px;
+      padding: 7px 14px;
       font-size: 13px;
-      color: #a9b1d6;
+      color: var(--fg-dim);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      transition: background 0.12s ease, color 0.12s ease;
     }
     .autocomplete-item.selected {
-      background: #292e42;
-      color: #c0caf5;
+      background: rgba(41, 46, 66, 0.95);
+      color: var(--fg);
     }
 
     .passthrough-toggle-btn {
       background: none;
-      border: 1px solid #292e42;
-      border-radius: 4px;
-      color: #565f89;
+      border: 1px solid var(--tokyo-border);
+      border-radius: 5px;
+      color: var(--muted);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 22px;
-      height: 22px;
+      width: 24px;
+      height: 24px;
       flex-shrink: 0;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .passthrough-toggle-btn.active {
+      color: var(--yellow);
+      border-color: rgba(224, 175, 104, 0.45);
+      background: rgba(224, 175, 104, 0.08);
     }
 
     .password-input {
       display: none;
       letter-spacing: 3px;
-      color: #c0caf5;
+      color: var(--fg);
       flex: 1;
       font-size: 14px;
       line-height: 22px;
     }
     .password-input.visible { display: block; }
 
-    /* Passthrough banner */
     .passthrough-indicator {
       display: none;
       align-items: center;
       gap: 8px;
-      padding: 12px 12px 8px;
-      background: #1a1b26;
-      border-top: 1px solid #292e42;
-      color: #e0af68;
-      font-size: 14px;
+      padding: 12px 4px 6px;
+      background: var(--tokyo);
+      border-top: 1px solid var(--tokyo-border);
+      color: var(--yellow);
+      font-size: 13.5px;
       font-weight: 600;
       line-height: 22px;
       flex-shrink: 0;
+      opacity: 0;
+      transform: translateY(4px);
     }
-    .passthrough-indicator.visible { display: flex; }
+    .passthrough-indicator.visible {
+      display: flex;
+      animation: barIn 0.28s var(--ease-out) forwards;
+    }
     .passthrough-indicator span { flex: 1; }
     .passthrough-exit-btn {
       background: none;
-      border: 1px solid #292e42;
-      border-radius: 4px;
-      color: #565f89;
+      border: 1px solid var(--tokyo-border);
+      border-radius: 5px;
+      color: var(--muted);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 22px;
-      height: 22px;
+      width: 24px;
+      height: 24px;
       flex-shrink: 0;
     }
 
-    /* Palette overlay */
     .palette-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
+      position: absolute;
+      inset: 38px 0 0 0;
+      background: rgba(0, 0, 0, 0.42);
       display: none;
       justify-content: center;
-      padding-top: 80px;
+      padding-top: 52px;
       z-index: 100;
+      opacity: 0;
     }
-    .palette-overlay.visible { display: flex; }
+    .palette-overlay.visible {
+      display: flex;
+      animation: fadeIn 0.2s ease forwards;
+    }
+    @keyframes fadeIn { to { opacity: 1; } }
+
     .palette {
-      width: 560px;
-      background: #1f2335;
-      border: 1px solid #292e42;
-      border-radius: 10px;
+      width: 540px;
+      background: rgba(31, 35, 53, 0.98);
+      border: 1px solid var(--tokyo-border);
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+      box-shadow: 0 22px 50px rgba(0, 0, 0, 0.5);
+      transform: scale(0.96) translateY(-8px);
+      opacity: 0;
+      backdrop-filter: blur(18px);
+    }
+    .palette-overlay.visible .palette {
+      animation: modalIn 0.28s var(--ease-out) forwards;
+    }
+    @keyframes modalIn {
+      to { opacity: 1; transform: scale(1) translateY(0); }
     }
     .palette-header {
       display: flex;
-      border-bottom: 1px solid #292e42;
+      align-items: center;
+      border-bottom: 1px solid var(--tokyo-border);
+      padding-right: 10px;
     }
     .palette-search {
       flex: 1;
       padding: 14px 16px;
       background: transparent;
       border: none;
-      color: #c0caf5;
+      color: var(--fg);
       font-size: 15px;
       outline: none;
+    }
+    .palette-search::placeholder { color: var(--muted); }
+    .palette-clear {
+      border: 1px solid var(--tokyo-border);
+      border-radius: 5px;
+      color: var(--muted);
+      background: none;
+      font-size: 12px;
+      padding: 4px 10px;
+      white-space: nowrap;
     }
     .palette-item {
       display: flex;
       align-items: center;
-      padding: 8px 16px;
+      padding: 9px 16px;
       gap: 8px;
+      transition: background 0.12s ease;
     }
     .palette-item.selected { background: #292e42; }
-    .palette-item.sticky { border-left: 3px solid #7aa2f7; padding-left: 13px; }
-    .pin-icon { color: #e0af68; font-size: 12px; }
+    .palette-item.sticky {
+      border-left: 3px solid var(--blue);
+      padding-left: 13px;
+    }
+    .pin-icon { color: var(--yellow); font-size: 12px; line-height: 1; }
     .item-content { flex: 1; min-width: 0; }
-    .item-label { font-size: 13px; color: #c0caf5; }
-    .item-cmd { font-size: 12px; color: #565f89; }
+    .item-label { font-size: 13px; color: var(--fg); }
+    .item-cmd { font-size: 12px; color: var(--muted); margin-top: 1px; }
+    .item-actions {
+      display: flex;
+      gap: 6px;
+      opacity: 0.85;
+    }
+    .item-action {
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
+      border: 1px solid var(--tokyo-border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .item-action.pin { color: var(--blue); border-color: #33467c; }
+    .item-action.del { color: var(--red); border-color: #4c3040; }
     .palette-footer {
       display: flex;
       gap: 16px;
-      padding: 6px 16px;
-      border-top: 1px solid #292e42;
+      padding: 8px 16px;
+      border-top: 1px solid var(--tokyo-border);
       font-size: 11px;
-      color: #565f89;
+      color: var(--muted);
     }
     .palette-footer kbd {
-      background: #292e42;
-      border: 1px solid #3b4261;
+      background: var(--tokyo-border);
+      border: 1px solid var(--tokyo-border-strong);
       border-radius: 3px;
-      padding: 0 4px;
+      padding: 1px 5px;
       font-size: 10px;
+      color: var(--fg-dim);
+      margin-right: 4px;
     }
 
-    /* Context menu */
     .context-menu {
-      position: fixed;
-      background: #1f2335;
-      border: 1px solid #292e42;
-      border-radius: 6px;
-      padding: 4px 0;
-      min-width: 180px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      position: absolute;
+      background: rgba(31, 35, 53, 0.98);
+      border: 1px solid var(--tokyo-border);
+      border-radius: 8px;
+      padding: 5px 0;
+      min-width: 190px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
       display: none;
       z-index: 200;
-    }
-    .context-menu.visible { display: block; }
-    .ctx-item {
-      padding: 6px 16px;
-      font-size: 13px;
-      color: #c0caf5;
-    }
-    .ctx-item:hover { background: #292e42; }
-    .ctx-sep { height: 1px; background: #292e42; margin: 4px 0; }
-
-    /* Toast */
-    .toast {
-      position: fixed;
-      bottom: 60px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #292e42;
-      color: #c0caf5;
-      padding: 6px 16px;
-      border-radius: 6px;
-      font-size: 12px;
-      border: 1px solid #3b4261;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
       opacity: 0;
-      transition: opacity 0.2s;
+      transform: scale(0.96);
+      transform-origin: top left;
+      backdrop-filter: blur(14px);
+    }
+    .context-menu.visible {
+      display: block;
+      animation: menuIn 0.18s var(--ease-out) forwards;
+    }
+    @keyframes menuIn {
+      to { opacity: 1; transform: scale(1); }
+    }
+    .ctx-item {
+      padding: 7px 16px;
+      font-size: 13px;
+      color: var(--fg);
+      transition: background 0.12s ease;
+    }
+    .ctx-item.hot { background: #292e42; }
+    .ctx-sep { height: 1px; background: var(--tokyo-border); margin: 4px 0; }
+
+    .toast {
+      position: absolute;
+      bottom: 72px;
+      left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: rgba(41, 46, 66, 0.96);
+      color: var(--fg);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      border: 1px solid var(--tokyo-border-strong);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      opacity: 0;
+      transition: opacity 0.25s var(--ease-soft), transform 0.25s var(--ease-soft);
       z-index: 300;
     }
-    .toast.visible { opacity: 1; }
+    .toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
 
-    /* Scene overlays — top banner, kept outside terminal content */
-    .scene-label {
-      position: fixed;
-      top: 28px;
-      left: 0;
-      right: 0;
-      background: rgba(26, 27, 38, 0.96);
-      border-bottom: 1px solid #292e42;
-      padding: 10px 20px;
-      font-size: 18px;
-      color: #c0caf5;
+    /* Apple-style floating caption — doesn't steal terminal space */
+    .scene-caption {
+      position: absolute;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%) translateY(10px);
       z-index: 500;
       opacity: 0;
-      transition: opacity 0.4s;
       pointer-events: none;
       display: flex;
-      align-items: baseline;
-      gap: 12px;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 12px 22px;
+      border-radius: 14px;
+      background: rgba(18, 20, 28, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(18px);
+      transition:
+        opacity 0.4s var(--ease-out),
+        transform 0.45s var(--ease-out);
+      max-width: 720px;
+      text-align: center;
     }
-    .scene-label.visible { opacity: 1; }
-    .scene-label strong {
-      color: #7aa2f7;
-      font-size: 18px;
-      flex-shrink: 0;
+    .scene-caption.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
     }
-    .scene-label span { color: #a9b1d6; font-size: 16px; }
+    .scene-caption strong {
+      color: var(--fg);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .scene-caption span {
+      color: var(--fg-dim);
+      font-size: 13px;
+      font-weight: 400;
+    }
 
-    /* Intro / outro overlays */
+    .kbd-badge {
+      position: absolute;
+      top: 48px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-6px);
+      background: rgba(18, 20, 28, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 13px;
+      color: var(--fg-dim);
+      z-index: 700;
+      opacity: 0;
+      transition: opacity 0.3s var(--ease-soft), transform 0.3s var(--ease-soft);
+      pointer-events: none;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+      white-space: nowrap;
+    }
+    .kbd-badge.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .kbd-badge kbd {
+      background: rgba(41, 46, 66, 0.95);
+      border: 1px solid var(--tokyo-border-strong);
+      border-radius: 5px;
+      padding: 2px 8px;
+      color: var(--fg);
+      margin-right: 8px;
+      font-size: 12px;
+      font-family: "SF Mono", Menlo, Monaco, monospace;
+    }
+
     .fullscreen-scene {
-      position: fixed;
+      position: absolute;
       inset: 0;
-      background: #1a1b26;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -422,83 +660,98 @@
       z-index: 1000;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.6s;
+      transition: opacity 0.7s var(--ease-out);
+      background:
+        radial-gradient(900px 500px at 50% 40%, rgba(122, 162, 247, 0.10), transparent 60%),
+        linear-gradient(180deg, #101218 0%, var(--bg) 55%, #08090d 100%);
     }
-    .fullscreen-scene.visible { opacity: 1; pointer-events: auto; }
-    .logo { font-size: 130px; font-weight: 700; color: #7aa2f7; letter-spacing: -2px; margin-bottom: 20px; }
-    .tagline { font-size: 40px; color: #c0caf5; margin-bottom: 40px; }
-    .features-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px 40px;
-      font-size: 25px;
-      color: #c0caf5;
-    }
-    .features-grid span { color: #9ece6a; margin-right: 8px; }
-    .shortcut-hint {
-      margin-top: 40px;
-      font-size: 23px;
-      color: #a9b1d6;
-    }
-    .shortcut-hint kbd {
-      background: #292e42;
-      border: 1px solid #3b4261;
-      border-radius: 4px;
-      padding: 4px 10px;
-      font-size: 22px;
-      color: #c0caf5;
-      margin: 0 4px;
+    .fullscreen-scene.visible {
+      opacity: 1;
+      pointer-events: auto;
     }
 
-    .kbd-badge {
-      position: fixed;
-      bottom: 24px;
-      left: 24px;
-      background: rgba(31,35,53,0.9);
-      border: 1px solid #292e42;
-      border-radius: 6px;
-      padding: 8px 14px;
-      font-size: 18px;
-      color: #a9b1d6;
-      z-index: 400;
+    .brand-mark {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      transform: translateY(8px);
       opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
     }
-    .kbd-badge.visible { opacity: 1; }
-    .kbd-badge kbd {
-      background: #292e42;
-      border: 1px solid #3b4261;
-      border-radius: 3px;
-      padding: 2px 8px;
-      color: #c0caf5;
+    .fullscreen-scene.visible .brand-mark {
+      animation: brandIn 0.9s var(--ease-out) 0.1s forwards;
+    }
+    @keyframes brandIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .logo {
+      font-size: 92px;
+      font-weight: 650;
+      color: var(--fg);
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+    .logo em {
+      font-style: normal;
+      color: var(--blue);
+    }
+    .tagline {
+      font-size: 24px;
+      color: var(--fg-dim);
+      font-weight: 400;
+      letter-spacing: -0.015em;
+    }
+    .outro .logo { font-size: 72px; }
+    .outro .tagline {
+      font-size: 18px;
+      margin-top: 4px;
+    }
+    .outro-shortcuts {
+      margin-top: 36px;
+      display: flex;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 14px;
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    .outro.visible .outro-shortcuts {
+      animation: brandIn 0.7s var(--ease-out) 0.25s forwards;
+    }
+    .outro-shortcuts kbd {
+      background: rgba(41, 46, 66, 0.9);
+      border: 1px solid var(--tokyo-border-strong);
+      border-radius: 6px;
+      padding: 4px 9px;
+      color: var(--fg);
+      font-size: 13px;
+      font-family: "SF Mono", Menlo, Monaco, monospace;
       margin-right: 6px;
-      font-size: 20px;
     }
 
-    /* Demo pointer — shows click into folder */
     .demo-cursor {
-      position: fixed;
-      width: 28px;
-      height: 28px;
+      position: absolute;
+      width: 26px;
+      height: 26px;
       pointer-events: none;
       z-index: 600;
       opacity: 0;
-      transition: left 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-                  top 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-                  opacity 0.2s,
-                  transform 0.1s;
-      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+      transition:
+        left 0.6s var(--ease-out),
+        top 0.6s var(--ease-out),
+        opacity 0.2s ease,
+        transform 0.12s ease;
+      filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
     }
     .demo-cursor.visible { opacity: 1; }
-    .demo-cursor.clicking { transform: scale(0.82); }
+    .demo-cursor.clicking { transform: scale(0.84); }
     .demo-cursor svg { display: block; }
 
     .click-ripple {
-      position: fixed;
+      position: absolute;
       width: 14px;
       height: 14px;
-      border: 2px solid #7aa2f7;
+      border: 2px solid var(--blue);
       border-radius: 50%;
       pointer-events: none;
       z-index: 599;
@@ -514,170 +767,203 @@
     }
 
     .hidden { display: none !important; }
+
+    /* Recording: JS owns cursor motion/blink; keep soft UI fades. */
+    body.recording .demo-cursor {
+      transition: opacity 0.15s ease, transform 0.1s ease !important;
+    }
+    body.recording .cursor {
+      animation: none !important;
+    }
   </style>
 </head>
 <body>
   <!-- Intro -->
   <div class="fullscreen-scene visible" id="intro">
-    <div class="logo">Origin</div>
-    <div class="tagline">A modern terminal, reimagined</div>
-    <div class="features-grid">
-      <div><span>▸</span> Smart command input</div>
-      <div><span>▸</span> Clickable files & folders</div>
-      <div><span>▸</span> Command palette</div>
-      <div><span>▸</span> Terminal search</div>
-      <div><span>▸</span> Persistent history</div>
-      <div><span>▸</span> Passthrough mode</div>
+    <div class="brand-mark">
+      <div class="logo"><em>Origin</em></div>
+      <div class="tagline">A modern terminal, reimagined</div>
     </div>
   </div>
 
   <!-- Outro -->
-  <div class="fullscreen-scene" id="outro">
-    <div class="logo" style="font-size: 101px;">Origin</div>
-    <div class="tagline" style="font-size: 32px; margin-bottom: 32px;">Built with Electron · xterm.js · React</div>
-    <div class="shortcut-hint">
-      <kbd>⌘K</kbd> palette · <kbd>⌘F</kbd> find · <kbd>⌘E</kbd> passthrough · <kbd>⌘=</kbd> font size
-    </div>
-  </div>
-
-  <div id="ui-root">
-  <div class="app-container mono">
-    <div class="terminal-wrapper">
-      <div class="search-bar" id="searchBar">
-        <input class="search-input mono" id="searchInput" readonly value="package.json" />
-        <div class="search-btn">↑</div>
-        <div class="search-btn">↓</div>
-        <div class="search-btn">✕</div>
-      </div>
-
-      <div class="terminal-output" id="terminal">
-        <div class="line"><span class="shell">davidchan@Davids-MacBook-Pro ~/Projects/origin % </span><span class="cmd">ls</span></div>
-        <div class="ls-output" id="rootLs">
-          <div class="ls-col">
-            <span class="dir">demo</span>
-            <span class="dir">scripts</span>
-            <span class="file" id="filePkg">package.json</span>
-            <span class="file">package-lock.json</span>
-          </div>
-          <div class="ls-col">
-            <span class="dir">node_modules</span>
-            <span class="dir">out</span>
-            <span class="file" id="fileReadme">README.md</span>
-          </div>
-          <div class="ls-col">
-            <span class="dir" id="dirSrc">src</span>
-            <span class="dir">public</span>
-            <span class="file">tsconfig.json</span>
-          </div>
-          <div class="ls-col">
-            <span class="dir">assets</span>
-            <span class="dir">build</span>
-            <span class="file">forge.config.ts</span>
-          </div>
-        </div>
-        <div class="line" id="rootPrompt"><span class="shell">davidchan@Davids-MacBook-Pro ~/Projects/origin % </span></div>
-      </div>
-
-      <div class="passthrough-indicator" id="passthroughBanner">
-        <span>Passthrough Mode — keystrokes go directly to terminal</span>
-        <div class="passthrough-exit-btn">✕</div>
-      </div>
-
-      <div class="command-input-container" id="inputArea">
-        <div class="autocomplete-dropdown" id="autocomplete">
-          <div class="autocomplete-item">npm start</div>
-          <div class="autocomplete-item selected">npm run package</div>
-          <div class="autocomplete-item">npm install</div>
-          <div class="autocomplete-item">npm run demo:video</div>
-          <div class="autocomplete-item">npm run lint</div>
-        </div>
-        <div class="command-input-row">
-          <span class="prompt-indicator"><span class="prompt-arrow">›</span></span>
-          <div class="command-textarea" id="inputText">
-            <span class="input-placeholder" id="inputPlaceholder">Type a command...</span>
-            <span id="typedText"></span><span class="cursor" id="cursor"></span>
-          </div>
-          <span class="password-input" id="passwordInput">••••••••</span>
-          <div class="passthrough-toggle-btn" id="passthroughBtn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z"/>
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  </div>
-
-  <div class="tooltip" id="tooltip">
-    <div class="tooltip-row"><span class="tooltip-label">Size</span> 1.2 KB</div>
-    <div class="tooltip-row"><span class="tooltip-label">Modified</span> May 30, 2026</div>
-    <div class="tooltip-row"><span class="tooltip-label">Created</span> Jan 15, 2026</div>
-  </div>
-
-  <div class="palette-overlay" id="palette">
-    <div class="palette">
-      <div class="palette-header">
-        <input class="palette-search mono" id="paletteSearch" readonly placeholder="Search commands..." />
-      </div>
-      <div class="palette-item sticky">
-        <span class="pin-icon">★</span>
-        <div class="item-content">
-          <div class="item-label">Start dev server</div>
-          <div class="item-cmd mono">npm start</div>
-        </div>
-      </div>
-      <div class="palette-item sticky">
-        <span class="pin-icon">★</span>
-        <div class="item-content">
-          <div class="item-label">Build package</div>
-          <div class="item-cmd mono">npm run package</div>
-        </div>
-      </div>
-      <div class="palette-item selected">
-        <div class="item-content">
-          <div class="item-label mono">git status</div>
-        </div>
-      </div>
-      <div class="palette-item">
-        <div class="item-content">
-          <div class="item-label mono">ls</div>
-        </div>
-      </div>
-      <div class="palette-item">
-        <div class="item-content">
-          <div class="item-label mono">npm install</div>
-        </div>
-      </div>
-      <div class="palette-footer">
-        <span><kbd>↑↓</kbd> navigate</span>
-        <span><kbd>↵</kbd> run</span>
-        <span><kbd>★</kbd> pin</span>
-        <span><kbd>esc</kbd> close</span>
+  <div class="fullscreen-scene outro" id="outro">
+    <div class="brand-mark">
+      <div class="logo"><em>Origin</em></div>
+      <div class="tagline">The terminal, refined</div>
+      <div class="outro-shortcuts">
+        <span><kbd>⌘K</kbd>palette</span>
+        <span><kbd>⌘F</kbd>find</span>
+        <span><kbd>⌘E</kbd>passthrough</span>
       </div>
     </div>
   </div>
 
-  <div class="context-menu" id="contextMenu">
-    <div class="ctx-item">Copy</div>
-    <div class="ctx-item">Search in Terminal</div>
-    <div class="ctx-sep"></div>
-    <div class="ctx-item">Paste</div>
-    <div class="ctx-sep"></div>
-    <div class="ctx-item">Clear Terminal</div>
-  </div>
+  <div class="stage" id="stage">
+    <div class="window" id="window">
+      <div class="titlebar">
+        <div class="traffic">
+          <span class="close"></span>
+          <span class="min"></span>
+          <span class="zoom"></span>
+        </div>
+        <div class="titlebar-title">Origin</div>
+      </div>
 
-  <div class="toast" id="toast">Command starred</div>
+      <div class="app-container mono">
+        <div class="terminal-wrapper">
+          <div class="search-bar" id="searchBar">
+            <input class="search-input mono" id="searchInput" readonly value="package.json" />
+            <div class="search-btn">↑</div>
+            <div class="search-btn">↓</div>
+            <div class="search-btn">✕</div>
+          </div>
 
-  <div class="scene-label" id="sceneLabel">
-    <strong id="sceneTitle"></strong>
-    <span id="sceneDesc"></span>
+          <div class="terminal-output" id="terminal">
+            <div class="line"><span class="shell">davidchan@Davids-MacBook-Pro ~/Projects/origin % </span><span class="cmd">ls</span></div>
+            <div class="ls-output" id="rootLs">
+              <div class="ls-col">
+                <span class="dir">demo</span>
+                <span class="dir">scripts</span>
+                <span class="file" id="filePkg">package.json</span>
+                <span class="file">package-lock.json</span>
+              </div>
+              <div class="ls-col">
+                <span class="dir">node_modules</span>
+                <span class="dir">out</span>
+                <span class="file" id="fileReadme">README.md</span>
+              </div>
+              <div class="ls-col">
+                <span class="dir" id="dirSrc">src</span>
+                <span class="dir">public</span>
+                <span class="file">tsconfig.json</span>
+              </div>
+              <div class="ls-col">
+                <span class="dir">assets</span>
+                <span class="dir">build</span>
+                <span class="file">forge.config.ts</span>
+              </div>
+            </div>
+            <div class="line" id="rootPrompt"><span class="shell">davidchan@Davids-MacBook-Pro ~/Projects/origin % </span></div>
+          </div>
+
+          <div class="passthrough-indicator" id="passthroughBanner">
+            <span>Passthrough mode enabled</span>
+            <div class="passthrough-exit-btn">✕</div>
+          </div>
+
+          <div class="command-input-container" id="inputArea">
+            <div class="autocomplete-dropdown" id="autocomplete">
+              <div class="autocomplete-item" data-cmd="npm start">npm start</div>
+              <div class="autocomplete-item selected" data-cmd="npm run package">npm run package</div>
+              <div class="autocomplete-item" data-cmd="npm install">npm install</div>
+              <div class="autocomplete-item" data-cmd="npm run demo:video">npm run demo:video</div>
+              <div class="autocomplete-item" data-cmd="npm run lint">npm run lint</div>
+            </div>
+            <div class="command-input-row">
+              <span class="prompt-indicator"><span class="prompt-arrow">›</span></span>
+              <div class="command-textarea" id="inputText">
+                <span class="input-placeholder" id="inputPlaceholder">Type a command...</span>
+                <span id="typedText"></span><span class="cursor" id="cursor"></span>
+              </div>
+              <span class="password-input" id="passwordInput"></span>
+              <div class="passthrough-toggle-btn" id="passthroughBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tooltip" id="tooltip"></div>
+
+      <div class="palette-overlay" id="palette">
+        <div class="palette">
+          <div class="palette-header">
+            <input class="palette-search mono" id="paletteSearch" readonly placeholder="Search commands..." />
+            <button class="palette-clear" tabindex="-1">Clear History</button>
+          </div>
+          <div class="palette-item sticky" id="stickyStart">
+            <span class="pin-icon">★</span>
+            <div class="item-content">
+              <div class="item-label">Start dev server</div>
+              <div class="item-cmd mono">npm start</div>
+            </div>
+            <div class="item-actions">
+              <span class="item-action pin">★</span>
+              <span class="item-action del">✕</span>
+            </div>
+          </div>
+          <div class="palette-item sticky" id="stickyPackage">
+            <span class="pin-icon">★</span>
+            <div class="item-content">
+              <div class="item-label">Build package</div>
+              <div class="item-cmd mono">npm run package</div>
+            </div>
+            <div class="item-actions">
+              <span class="item-action pin">★</span>
+              <span class="item-action del">✕</span>
+            </div>
+          </div>
+          <div class="palette-item selected" id="histGit">
+            <div class="item-content">
+              <div class="item-label mono">git status</div>
+            </div>
+            <div class="item-actions">
+              <span class="item-action pin" id="starGit">★</span>
+              <span class="item-action del">✕</span>
+            </div>
+          </div>
+          <div class="palette-item" id="histLs">
+            <div class="item-content">
+              <div class="item-label mono">ls</div>
+            </div>
+            <div class="item-actions">
+              <span class="item-action pin">★</span>
+              <span class="item-action del">✕</span>
+            </div>
+          </div>
+          <div class="palette-item">
+            <div class="item-content">
+              <div class="item-label mono">npm install</div>
+            </div>
+            <div class="item-actions">
+              <span class="item-action pin">★</span>
+              <span class="item-action del">✕</span>
+            </div>
+          </div>
+          <div class="palette-footer">
+            <span><kbd>↵</kbd>Run</span>
+            <span><kbd>↑↓</kbd>Navigate</span>
+            <span><kbd>esc</kbd>Close</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="context-menu" id="contextMenu">
+        <div class="ctx-item">Copy</div>
+        <div class="ctx-item hot">Search in Terminal</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item">Paste</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item">Clear Terminal</div>
+      </div>
+
+      <div class="toast" id="toast">Command starred</div>
+    </div>
   </div>
 
   <div class="kbd-badge" id="kbdBadge"></div>
 
+  <div class="scene-caption" id="sceneCaption">
+    <strong id="sceneTitle"></strong>
+    <span id="sceneDesc"></span>
+  </div>
+
   <div class="demo-cursor" id="demoCursor" aria-hidden="true">
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="26" height="26" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M4 2L4 22L9.5 16.5L14 24L17 22.5L12.5 15L20 15L4 2Z" fill="white" stroke="#1a1b26" stroke-width="1.5" stroke-linejoin="round"/>
     </svg>
   </div>
@@ -685,60 +971,107 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
+    const IS_RECORDING = new URLSearchParams(location.search).has("record");
+    if (IS_RECORDING) document.body.classList.add("recording");
 
+    const SHELL = "davidchan@Davids-MacBook-Pro";
+    window.DEMO_DURATION_MS = 54000;
+    window.demoComplete = false;
+
+    let nextScene = 0;
+    let demoTimeMs = 0;
+    let cursorMove = null;
+
+    // Same feature script — absolute timeline for frame-accurate capture
     const scenes = [
-      { at: 0,    fn: () => {} },
-      { at: 3500, fn: introOut },
-      { at: 4000, fn: () => showScene('Clickable Directories', 'Run ls — hover a folder, click to cd into it') },
-      { at: 4200, fn: () => moveCursorTo($('dirSrc'), { from: { x: 920, y: 420 } }) },
-      { at: 5000, fn: hoverDir },
-      { at: 6200, fn: clickDir },
-      { at: 6800, fn: hideCursor },
-      { at: 9000, fn: () => showScene('Smart Command Input', 'Autocomplete from history · multi-line · password masking') },
-      { at: 9500, fn: startTyping },
-      { at: 11000, fn: showAutocomplete },
-      { at: 13500, fn: hideAutocomplete },
-      { at: 14000, fn: () => showScene('Command Palette', 'Star commands · drag to reorder · search history') },
-      { at: 14500, fn: openPalette },
-      { at: 17500, fn: starCommand },
-      { at: 19500, fn: closePalette },
-      { at: 20000, fn: () => showScene('Terminal Search', 'Find text in scrollback with highlighted matches') },
-      { at: 20500, fn: openSearch },
-      { at: 24000, fn: closeSearch },
-      { at: 24500, fn: () => showScene('Context Menu', 'Right-click for copy, search, paste, and clear') },
-      { at: 25000, fn: showContextMenu },
-      { at: 28000, fn: hideContextMenu },
-      { at: 28500, fn: () => showScene('Passthrough Mode', 'Direct keyboard input for REPLs & interactive CLIs') },
-      { at: 29000, fn: enablePassthrough },
-      { at: 32500, fn: disablePassthrough },
-      { at: 33000, fn: () => showScene('Password Masking', 'Auto-detects sudo, ssh, git prompts — never saved to history') },
-      { at: 33500, fn: showPasswordPrompt },
-      { at: 36500, fn: hidePasswordPrompt },
-      { at: 37000, fn: () => showScene('Persistent & Polished', 'GPU rendering · 10K scrollback · Tokyo Night theme') },
-      { at: 40000, fn: hideSceneLabel },
-      { at: 42000, fn: showOutro },
-    ];
+      { at: 2800,  fn: introOut },
+      { at: 3200,  fn: showStage },
+      { at: 3800,  fn: () => showScene("Clickable directories", "Hover a folder · click to cd") },
+      { at: 4200,  fn: () => beginCursorMove($("dirSrc"), { x: 980, y: 390 }, 4200, 4800) },
+      { at: 5000,  fn: hoverDir },
+      { at: 6400,  fn: clickDirPress },
+      { at: 6560,  fn: clickDirComplete },
+      { at: 7000,  fn: hideCursor },
+      { at: 9200,  fn: () => showScene("Smart command input", "History autocomplete · multi-line · never loses context") },
+      { at: 9800,  fn: () => { setInputPlaceholderVisible(false); $("typedText").textContent = ""; } },
+      // Typing "npm run pac" — spaced for natural cadence
+      ...buildTypingEvents(9800, "npm run pac", [90, 70, 85, 60, 95, 55, 80, 70, 110, 65, 75]),
+      { at: 11600, fn: showAutocomplete },
+      { at: 12800, fn: () => selectAutocomplete(2) },
+      { at: 13500, fn: () => selectAutocomplete(1) },
+      { at: 14200, fn: acceptAutocomplete },
+      { at: 15400, fn: () => showScene("Command palette", "Star favorites · search history · run instantly") },
+      { at: 16000, fn: openPalette },
+      { at: 17600, fn: () => selectPalette("histLs") },
+      { at: 18250, fn: () => selectPalette("histGit") },
+      { at: 19200, fn: starCommand },
+      { at: 21400, fn: closePalette },
+      { at: 22200, fn: () => showScene("Terminal search", "Find any text in scrollback — highlighted instantly") },
+      { at: 22800, fn: openSearch },
+      { at: 26200, fn: closeSearch },
+      { at: 27000, fn: () => showScene("Context menu", "Copy · search · paste · clear — right where you need it") },
+      { at: 27600, fn: showContextMenu },
+      { at: 30600, fn: hideContextMenu },
+      { at: 31400, fn: () => showScene("Passthrough mode", "Direct keyboard input for REPLs & interactive CLIs") },
+      { at: 32000, fn: enablePassthroughStart },
+      { at: 32250, fn: () => appendLine('<span class="yellow">Python 3.12.0</span> <span class="muted">(default, Oct  2 2024)</span>') },
+      { at: 32950, fn: () => appendLine('<span class="shell">&gt;&gt;&gt; </span><span class="cmd">print("Hello from Origin")</span>') },
+      { at: 33650, fn: () => appendLine('<span class="green">Hello from Origin</span>') },
+      { at: 34150, fn: () => appendLine('<span class="shell">&gt;&gt;&gt; </span>') },
+      { at: 36200, fn: disablePassthrough },
+      { at: 37000, fn: () => showScene("Password masking", "Auto-detects sudo, ssh, and git — never saved to history") },
+      { at: 37600, fn: showPasswordPrompt },
+      ...buildPasswordDots(39200, 10, 90),
+      { at: 41800, fn: hidePasswordPrompt },
+      { at: 42600, fn: settlePolishedBeat },
+      { at: 45800, fn: hideSceneCaption },
+      { at: 47400, fn: hideStage },
+      { at: 48400, fn: showOutro },
+      { at: 53500, fn: () => { window.demoComplete = true; } },
+    ].sort((a, b) => a.at - b.at);
+
+    function buildTypingEvents(startAt, text, delays) {
+      const events = [];
+      let t = startAt;
+      for (let i = 0; i < text.length; i++) {
+        t += delays[i] || 80;
+        const slice = text.slice(0, i + 1);
+        events.push({ at: t, fn: () => { $("typedText").textContent = slice; } });
+      }
+      return events;
+    }
+
+    function buildPasswordDots(startAt, count, step) {
+      const events = [];
+      for (let i = 1; i <= count; i++) {
+        events.push({
+          at: startAt + i * step,
+          fn: () => { $("passwordInput").textContent = "•".repeat(i); },
+        });
+      }
+      return events;
+    }
 
     function showScene(title, desc) {
-      $('sceneTitle').textContent = title;
-      $('sceneDesc').textContent = desc;
-      $('sceneLabel').classList.add('visible');
-      document.body.classList.add('scene-active');
+      $("sceneTitle").textContent = title;
+      $("sceneDesc").textContent = desc;
+      $("sceneCaption").classList.add("visible");
     }
-    function hideSceneLabel() {
-      $('sceneLabel').classList.remove('visible');
-      document.body.classList.remove('scene-active');
+    function hideSceneCaption() {
+      $("sceneCaption").classList.remove("visible");
     }
 
     function showKbd(keys) {
-      $('kbdBadge').innerHTML = keys;
-      $('kbdBadge').classList.add('visible');
+      $("kbdBadge").innerHTML = keys;
+      $("kbdBadge").classList.add("visible");
     }
-    function hideKbd() { $('kbdBadge').classList.remove('visible'); }
+    function hideKbd() {
+      $("kbdBadge").classList.remove("visible");
+    }
 
-    function introOut() { $('intro').classList.remove('visible'); }
-
-    const SHELL = 'davidchan@Davids-MacBook-Pro';
+    function introOut() { $("intro").classList.remove("visible"); }
+    function showStage() { $("stage").classList.add("visible"); }
+    function hideStage() { $("stage").classList.remove("visible"); }
 
     function shellPrompt(path) {
       return `<span class="shell">${SHELL} ${path} % </span>`;
@@ -746,19 +1079,19 @@
 
     function renderLsColumns(items, columns = 4) {
       const rows = Math.ceil(items.length / columns);
-      const el = document.createElement('div');
-      el.className = 'ls-output';
+      const el = document.createElement("div");
+      el.className = "ls-output fade-in-line";
       for (let col = 0; col < columns; col++) {
-        const colEl = document.createElement('div');
-        colEl.className = 'ls-col';
+        const colEl = document.createElement("div");
+        colEl.className = "ls-col";
         let hasItems = false;
         for (let row = 0; row < rows; row++) {
           const idx = row * columns + col;
           if (idx >= items.length) continue;
           hasItems = true;
           const item = items[idx];
-          const span = document.createElement('span');
-          span.className = item.cls || 'dir';
+          const span = document.createElement("span");
+          span.className = item.cls || "dir";
           span.textContent = item.name;
           if (item.id) span.id = item.id;
           colEl.appendChild(span);
@@ -768,206 +1101,271 @@
       return el;
     }
 
-    function setInputPlaceholderVisible(visible) {
-      $('inputPlaceholder').classList.toggle('hidden', !visible);
+    function appendLine(html, { fade = true } = {}) {
+      const line = document.createElement("div");
+      line.className = fade ? "line fade-in-line" : "line";
+      line.innerHTML = html;
+      $("terminal").appendChild(line);
+      return line;
     }
 
-    function moveCursorTo(el, { from } = {}) {
-      const cursor = $('demoCursor');
-      const rect = el.getBoundingClientRect();
-      const x = rect.left + rect.width * 0.35;
-      const y = rect.top + rect.height * 0.55;
+    function setInputPlaceholderVisible(visible) {
+      $("inputPlaceholder").classList.toggle("hidden", !visible);
+    }
 
-      if (from) {
-        cursor.style.left = from.x + 'px';
-        cursor.style.top = from.y + 'px';
-        cursor.classList.add('visible');
-        requestAnimationFrame(() => {
-          cursor.style.left = x + 'px';
-          cursor.style.top = y + 'px';
-        });
-      } else {
-        cursor.style.left = x + 'px';
-        cursor.style.top = y + 'px';
-        cursor.classList.add('visible');
-      }
+    function easeOutCubic(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+
+    function beginCursorMove(el, from, startMs, endMs) {
+      const rect = el.getBoundingClientRect();
+      cursorMove = {
+        from,
+        to: { x: rect.left + rect.width * 0.35, y: rect.top + rect.height * 0.55 },
+        startMs,
+        endMs,
+      };
+      const cursor = $("demoCursor");
+      cursor.style.left = from.x + "px";
+      cursor.style.top = from.y + "px";
+      cursor.classList.add("visible");
+      updateCursorMove(startMs);
+    }
+
+    function updateCursorMove(ms) {
+      if (!cursorMove) return;
+      const { from, to, startMs, endMs } = cursorMove;
+      const t = Math.min(1, Math.max(0, (ms - startMs) / (endMs - startMs)));
+      const e = easeOutCubic(t);
+      const cursor = $("demoCursor");
+      cursor.style.left = from.x + (to.x - from.x) * e + "px";
+      cursor.style.top = from.y + (to.y - from.y) * e + "px";
+      if (t >= 1) cursorMove = null;
     }
 
     function hideCursor() {
-      $('demoCursor').classList.remove('visible', 'clicking');
+      $("demoCursor").classList.remove("visible", "clicking");
+      cursorMove = null;
     }
 
     function playClickRipple(x, y) {
-      const ripple = $('clickRipple');
-      ripple.style.left = x + 'px';
-      ripple.style.top = y + 'px';
-      ripple.classList.remove('active');
+      const ripple = $("clickRipple");
+      ripple.style.left = x + "px";
+      ripple.style.top = y + "px";
+      ripple.classList.remove("active");
       void ripple.offsetWidth;
-      ripple.classList.add('active');
+      ripple.classList.add("active");
     }
 
     function hoverDir() {
-      const d = $('dirSrc');
-      d.classList.add('hover');
+      const d = $("dirSrc");
+      d.classList.add("hover");
       const rect = d.getBoundingClientRect();
-      const t = $('tooltip');
+      const win = $("window").getBoundingClientRect();
+      const t = $("tooltip");
       t.innerHTML = `
         <div class="tooltip-row"><span class="tooltip-label">Click</span> cd src</div>
         <div class="tooltip-row"><span class="tooltip-label">Type</span> directory</div>
       `;
-      t.style.left = rect.left + 'px';
-      t.style.top = (rect.bottom + 8) + 'px';
-      t.classList.add('visible');
+      t.style.left = (rect.left - win.left) + "px";
+      t.style.top = (rect.bottom - win.top + 8) + "px";
+      t.classList.add("visible");
     }
 
-    function clickDir() {
-      const d = $('dirSrc');
+    function clickDirPress() {
+      const d = $("dirSrc");
       const rect = d.getBoundingClientRect();
       const clickX = rect.left + rect.width * 0.35;
       const clickY = rect.top + rect.height * 0.55;
-      const cursor = $('demoCursor');
-
-      cursor.classList.add('clicking');
-      d.classList.add('pressed');
+      $("demoCursor").classList.add("clicking");
+      d.classList.add("pressed");
       playClickRipple(clickX + 4, clickY + 4);
-
-      setTimeout(() => {
-        $('tooltip').classList.remove('visible');
-        d.classList.remove('hover', 'pressed');
-        cursor.classList.remove('clicking');
-
-        const cdLine = document.createElement('div');
-        cdLine.className = 'line';
-        cdLine.innerHTML = '<span class="purple">cd src</span>';
-        $('terminal').appendChild(cdLine);
-
-        $('rootPrompt').innerHTML = shellPrompt('~/Projects/origin/src') + '<span class="cmd">ls</span>';
-
-        $('terminal').appendChild(renderLsColumns([
-          { name: 'main', cls: 'dir' },
-          { name: 'preload', cls: 'dir' },
-          { name: 'renderer', cls: 'dir' },
-          { name: 'shared', cls: 'dir' },
-        ]));
-
-        const srcPrompt = document.createElement('div');
-        srcPrompt.className = 'line';
-        srcPrompt.innerHTML = shellPrompt('~/Projects/origin/src');
-        $('terminal').appendChild(srcPrompt);
-      }, 180);
     }
 
-    function startTyping() {
-      const text = 'npm run pac';
-      let i = 0;
-      setInputPlaceholderVisible(false);
-      const iv = setInterval(() => {
-        if (i < text.length) {
-          $('typedText').textContent = text.slice(0, ++i);
-        } else {
-          clearInterval(iv);
-        }
-      }, 120);
+    function clickDirComplete() {
+      const d = $("dirSrc");
+      $("tooltip").classList.remove("visible");
+      d.classList.remove("hover", "pressed");
+      $("demoCursor").classList.remove("clicking");
+
+      appendLine('<span class="purple">cd src</span>');
+      $("rootPrompt").innerHTML = shellPrompt("~/Projects/origin/src") + '<span class="cmd">ls</span>';
+      $("terminal").appendChild(renderLsColumns([
+        { name: "main", cls: "dir" },
+        { name: "preload", cls: "dir" },
+        { name: "renderer", cls: "dir" },
+        { name: "shared", cls: "dir" },
+      ]));
+      appendLine(shellPrompt("~/Projects/origin/src"));
     }
 
     function showAutocomplete() {
-      $('autocomplete').classList.add('visible');
+      $("autocomplete").classList.add("visible");
     }
-    function hideAutocomplete() {
-      $('autocomplete').classList.remove('visible');
-      $('typedText').textContent = 'npm run package';
+
+    function selectAutocomplete(index) {
+      const items = [...document.querySelectorAll(".autocomplete-item")];
+      items.forEach((el) => el.classList.remove("selected"));
+      if (items[index]) items[index].classList.add("selected");
+    }
+
+    function acceptAutocomplete() {
+      $("autocomplete").classList.remove("visible");
+      $("typedText").textContent = "npm run package";
     }
 
     function openPalette() {
-      hideSceneLabel();
-      $('palette').classList.add('visible');
-      showKbd('<kbd>⌘K</kbd> Command Palette');
+      hideSceneCaption();
+      $("palette").classList.add("visible");
+      showKbd("<kbd>⌘K</kbd>Command Palette");
     }
+
+    function selectPalette(id) {
+      ["histGit", "histLs"].forEach((key) => $(key).classList.remove("selected"));
+      $(id).classList.add("selected");
+    }
+
     function starCommand() {
-      $('toast').classList.add('visible');
+      const pin = $("starGit");
+      pin.style.color = "#e0af68";
+      pin.style.borderColor = "rgba(224, 175, 104, 0.45)";
+      pin.style.background = "rgba(224, 175, 104, 0.1)";
+      $("toast").classList.add("visible");
     }
+
     function closePalette() {
-      $('palette').classList.remove('visible');
-      $('toast').classList.remove('visible');
+      $("palette").classList.remove("visible");
+      $("toast").classList.remove("visible");
       hideKbd();
     }
 
     function openSearch() {
-      hideSceneLabel();
-      $('searchBar').classList.add('visible');
-      showKbd('<kbd>⌘F</kbd> Find in Terminal');
-      const el = $('filePkg');
+      hideSceneCaption();
+      $("searchBar").classList.add("visible");
+      showKbd("<kbd>⌘F</kbd>Find in Terminal");
+      const el = $("filePkg");
       if (el) {
+        el.dataset.original = el.textContent;
         el.innerHTML = '<span class="highlight">package.json</span>';
-        el.classList.remove('file');
+        el.classList.remove("file");
       }
     }
+
     function closeSearch() {
-      $('searchBar').classList.remove('visible');
+      $("searchBar").classList.remove("visible");
       hideKbd();
+      const el = $("filePkg");
+      if (el) {
+        el.textContent = el.dataset.original || "package.json";
+        el.classList.add("file");
+      }
     }
 
     function showContextMenu() {
-      hideSceneLabel();
-      $('contextMenu').style.left = '480px';
-      $('contextMenu').style.top = '320px';
-      $('contextMenu').classList.add('visible');
+      hideSceneCaption();
+      $("contextMenu").style.left = "430px";
+      $("contextMenu").style.top = "250px";
+      $("contextMenu").classList.add("visible");
     }
-    function hideContextMenu() { $('contextMenu').classList.remove('visible'); }
+    function hideContextMenu() {
+      $("contextMenu").classList.remove("visible");
+    }
 
-    function enablePassthrough() {
-      $('inputArea').classList.add('hidden');
-      $('passthroughBanner').classList.add('visible');
-      showKbd('<kbd>⌘E</kbd> Passthrough Mode');
-      const line = document.createElement('div');
-      line.className = 'line';
-      line.innerHTML = '<span class="yellow">Python 3.12.0</span> <span class="muted">(default)</span>';
-      $('terminal').appendChild(line);
-      const line2 = document.createElement('div');
-      line2.className = 'line';
-      line2.innerHTML = '<span class="shell">&gt;&gt;&gt; </span><span class="cmd">print("Hello from REPL")</span>';
-      $('terminal').appendChild(line2);
-      const line3 = document.createElement('div');
-      line3.className = 'line green';
-      line3.textContent = 'Hello from REPL';
-      $('terminal').appendChild(line3);
+    function enablePassthroughStart() {
+      $("terminal").innerHTML = "";
+      appendLine(
+        shellPrompt("~/Projects/origin") + '<span class="cmd">python3</span>',
+        { fade: false }
+      );
+      $("inputArea").classList.add("hidden");
+      $("passthroughBanner").classList.add("visible");
+      $("passthroughBtn").classList.add("active");
+      showKbd("<kbd>⌘E</kbd>Passthrough Mode");
     }
+
     function disablePassthrough() {
-      $('inputArea').classList.remove('hidden');
-      $('passthroughBanner').classList.remove('visible');
+      $("inputArea").classList.remove("hidden");
+      $("passthroughBanner").classList.remove("visible");
+      $("passthroughBtn").classList.remove("active");
       hideKbd();
     }
 
     function showPasswordPrompt() {
-      $('typedText').textContent = '';
+      $("typedText").textContent = "";
       setInputPlaceholderVisible(false);
-      $('cursor').classList.add('hidden');
-      $('passwordInput').classList.add('visible');
-      const line = document.createElement('div');
-      line.className = 'line';
-      line.innerHTML = '<span class="yellow">[sudo] password for david:</span>';
-      $('terminal').appendChild(line);
+      $("cursor").classList.add("hidden");
+      $("passwordInput").textContent = "";
+      $("passwordInput").classList.add("visible");
+      $("terminal").innerHTML = "";
+      appendLine(
+        shellPrompt("~/Projects/origin") + '<span class="cmd">sudo -v</span>',
+        { fade: false }
+      );
+      appendLine('<span class="yellow">[sudo] password for david:</span>');
     }
+
     function hidePasswordPrompt() {
-      $('passwordInput').classList.remove('visible');
-      $('cursor').classList.remove('hidden');
+      $("passwordInput").classList.remove("visible");
+      $("passwordInput").textContent = "";
+      $("cursor").classList.remove("hidden");
       setInputPlaceholderVisible(true);
+      appendLine('<span class="muted"># credentials cached · never saved to history</span>');
+      appendLine(shellPrompt("~/Projects/origin"));
+    }
+
+    function settlePolishedBeat() {
+      $("terminal").innerHTML = "";
+      appendLine(shellPrompt("~/Projects/origin") + '<span class="cmd">ls</span>', { fade: false });
+      $("terminal").appendChild(renderLsColumns([
+        { name: "demo", cls: "dir" },
+        { name: "node_modules", cls: "dir" },
+        { name: "src", cls: "dir" },
+        { name: "assets", cls: "dir" },
+        { name: "scripts", cls: "dir" },
+        { name: "out", cls: "dir" },
+        { name: "public", cls: "dir" },
+        { name: "build", cls: "dir" },
+        { name: "package.json", cls: "file" },
+        { name: "README.md", cls: "file" },
+        { name: "tsconfig.json", cls: "file" },
+        { name: "forge.config.ts", cls: "file" },
+      ]));
+      appendLine(shellPrompt("~/Projects/origin"));
+      $("typedText").textContent = "";
+      setInputPlaceholderVisible(true);
+      showScene("Polished throughout", "GPU rendering · 10K scrollback · Tokyo Night");
     }
 
     function showOutro() {
-      $('outro').classList.add('visible');
+      $("outro").classList.add("visible");
     }
 
-    // Signal when demo is complete (for Playwright)
-    window.demoComplete = false;
+    function updateCaretBlink(ms) {
+      // Deterministic blink so recording captures both on/off frames.
+      const on = Math.floor(ms / 530) % 2 === 0;
+      $("cursor").style.opacity = on ? "1" : "0";
+    }
 
-    scenes.forEach(({ at, fn }) => {
-      setTimeout(fn, at);
-    });
+    function setDemoTime(ms) {
+      demoTimeMs = ms;
+      while (nextScene < scenes.length && scenes[nextScene].at <= ms) {
+        scenes[nextScene].fn();
+        nextScene += 1;
+      }
+      updateCursorMove(ms);
+      updateCaretBlink(ms);
+    }
 
-    setTimeout(() => {
-      window.demoComplete = true;
-    }, 47000);
+    window.__setDemoTime = setDemoTime;
+
+    if (!IS_RECORDING) {
+      const start = performance.now();
+      const tick = (now) => {
+        setDemoTime(now - start);
+        if (!window.demoComplete) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
   </script>
 </body>
 </html>
