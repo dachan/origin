@@ -40,6 +40,9 @@
       position: relative;
       background: #1a1b26;
     }
+    body.scene-active .app-container {
+      padding-top: calc(28px + 52px + 16px);
+    }
     .app-container::before {
       content: '';
       position: absolute;
@@ -380,24 +383,32 @@
     }
     .toast.visible { opacity: 1; }
 
-    /* Scene overlays — large callout text (10% smaller than prior 2x sizing) */
+    /* Scene overlays — top banner, kept outside terminal content */
     .scene-label {
       position: fixed;
-      top: 40px;
-      right: 24px;
-      background: rgba(31, 35, 53, 0.92);
-      border: 1px solid #292e42;
-      border-radius: 8px;
-      padding: 12px 18px;
-      font-size: 23px;
+      top: 28px;
+      left: 0;
+      right: 0;
+      background: rgba(26, 27, 38, 0.96);
+      border-bottom: 1px solid #292e42;
+      padding: 10px 20px;
+      font-size: 18px;
       color: #c0caf5;
       z-index: 500;
       opacity: 0;
       transition: opacity 0.4s;
-      max-width: 560px;
+      pointer-events: none;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
     }
     .scene-label.visible { opacity: 1; }
-    .scene-label strong { color: #7aa2f7; display: block; margin-bottom: 6px; font-size: 25px; }
+    .scene-label strong {
+      color: #7aa2f7;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .scene-label span { color: #a9b1d6; font-size: 16px; }
 
     /* Intro / outro overlays */
     .fullscreen-scene {
@@ -442,16 +453,17 @@
     .kbd-badge {
       position: fixed;
       bottom: 24px;
-      right: 24px;
+      left: 24px;
       background: rgba(31,35,53,0.9);
       border: 1px solid #292e42;
       border-radius: 6px;
       padding: 8px 14px;
-      font-size: 22px;
+      font-size: 18px;
       color: #a9b1d6;
       z-index: 400;
       opacity: 0;
       transition: opacity 0.3s;
+      pointer-events: none;
     }
     .kbd-badge.visible { opacity: 1; }
     .kbd-badge kbd {
@@ -539,7 +551,7 @@
       </div>
 
       <div class="terminal-output" id="terminal">
-        <div class="line"><span class="shell">davidchan@Davids-MacBook-Pro-Settled ~/Projects/origin % </span><span class="cmd">ls</span></div>
+        <div class="line"><span class="shell">davidchan@Davids-MacBook-Pro ~/Projects/origin % </span><span class="cmd">ls</span></div>
         <div class="ls-output" id="rootLs">
           <div class="ls-col">
             <span class="dir">demo</span>
@@ -563,7 +575,7 @@
             <span class="file">forge.config.ts</span>
           </div>
         </div>
-        <div class="line" id="rootPrompt"><span class="shell">davidchan@Davids-MacBook-Pro-Settled ~/Projects/origin % </span></div>
+        <div class="line" id="rootPrompt"><span class="shell">davidchan@Davids-MacBook-Pro ~/Projects/origin % </span></div>
       </div>
 
       <div class="passthrough-indicator" id="passthroughBanner">
@@ -711,8 +723,12 @@
       $('sceneTitle').textContent = title;
       $('sceneDesc').textContent = desc;
       $('sceneLabel').classList.add('visible');
+      document.body.classList.add('scene-active');
     }
-    function hideSceneLabel() { $('sceneLabel').classList.remove('visible'); }
+    function hideSceneLabel() {
+      $('sceneLabel').classList.remove('visible');
+      document.body.classList.remove('scene-active');
+    }
 
     function showKbd(keys) {
       $('kbdBadge').innerHTML = keys;
@@ -722,7 +738,7 @@
 
     function introOut() { $('intro').classList.remove('visible'); }
 
-    const SHELL = 'davidchan@Davids-MacBook-Pro-Settled';
+    const SHELL = 'davidchan@Davids-MacBook-Pro';
 
     function shellPrompt(path) {
       return `<span class="shell">${SHELL} ${path} % </span>`;
@@ -863,6 +879,7 @@
     }
 
     function openPalette() {
+      hideSceneLabel();
       $('palette').classList.add('visible');
       showKbd('<kbd>⌘K</kbd> Command Palette');
     }
@@ -876,6 +893,7 @@
     }
 
     function openSearch() {
+      hideSceneLabel();
       $('searchBar').classList.add('visible');
       showKbd('<kbd>⌘F</kbd> Find in Terminal');
       const el = $('filePkg');
@@ -890,6 +908,7 @@
     }
 
     function showContextMenu() {
+      hideSceneLabel();
       $('contextMenu').style.left = '480px';
       $('contextMenu').style.top = '320px';
       $('contextMenu').classList.add('visible');
