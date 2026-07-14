@@ -1,7 +1,7 @@
 {
   "name": "origin",
   "productName": "Origin",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Origin",
   "main": ".webpack/main",
   "private": true,
