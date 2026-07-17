@@ -22,7 +22,7 @@ const ContextMenu: React.FC = () => {
   const [position, setPosition] = useState<MenuPosition | null>(null);
   const [items, setItems] = useState<MenuEntry[]>([]);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { ptyId, terminalRef } = useTerminal();
+  const { terminalRef, clearTerminal } = useTerminal();
 
   const close = useCallback(() => {
     setPosition(null);
@@ -103,9 +103,7 @@ const ContextMenu: React.FC = () => {
       menuItems.push({
         label: 'Clear Terminal',
         action: () => {
-          if (ptyId) {
-            window.electronAPI.ptyWrite(ptyId, 'clear\n');
-          }
+          clearTerminal();
           close();
         },
       });
@@ -125,7 +123,7 @@ const ContextMenu: React.FC = () => {
       window.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('click', handleClick);
     };
-  }, [ptyId, terminalRef, close]);
+  }, [terminalRef, clearTerminal, close]);
 
   // Adjust position if menu would overflow viewport
   useEffect(() => {

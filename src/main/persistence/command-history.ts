@@ -5,19 +5,21 @@ import { JsonStore } from './store';
 
 const MAX_HISTORY = 5000;
 
+// zsh extended_history format: ": timestamp:0;command"
+const ZSH_EXTENDED_LINE_RE = /^: \d+:\d+;(.+)$/;
+
 class CommandHistoryStore {
   private store = new JsonStore<string[]>('command-history.json', []);
   private cache: string[] | null = null;
-
-  private getShellHistoryPath(): string | null {
-    const shell = process.env.SHELL ?? '';
-    if (shell.endsWith('/zsh')) return join(homedir(), '.zsh_history');
-    if (shell.endsWith('/bash')) return join(homedir(), '.bash_history');
-    return null;
-  }
+  private readonly isZsh = (process.env.SHELL ?? '').endsWith('/zsh');
+  private readonly shellHistoryPath: string | null = this.isZsh
+    ? join(homedir(), '.zsh_history')
+    : (process.env.SHELL ?? '').endsWith('/bash')
+      ? join(homedir(), '.bash_history')
+      : null;
 
   private async readShellHistory(): Promise<string[]> {
-    const histPath = this.getShellHistoryPath();
+    const histPath = this.shellHistoryPath;
     if (!histPath) return [];
     try {
       const raw = await readFile(histPath, 'utf-8');
@@ -25,8 +27,7 @@ class CommandHistoryStore {
       const commands: string[] = [];
       for (const line of lines) {
         if (!line) continue;
-        // zsh extended_history format: ": timestamp:0;command"
-        const match = line.match(/^: \d+:\d+;(.+)$/);
+        const match = line.match(ZSH_EXTENDED_LINE_RE);
         if (match) {
           commands.push(match[1]);
         } else if (!line.startsWith(': ')) {
@@ -41,17 +42,12 @@ class CommandHistoryStore {
   }
 
   private async appendToShellHistory(command: string): Promise<void> {
-    const histPath = this.getShellHistoryPath();
+    const histPath = this.shellHistoryPath;
     if (!histPath) return;
     try {
-      const shell = process.env.SHELL ?? '';
-      let line: string;
-      if (shell.endsWith('/zsh')) {
-        const ts = Math.floor(Date.now() / 1000);
-        line = `: ${ts}:0;${command}\n`;
-      } else {
-        line = `${command}\n`;
-      }
+      const line = this.isZsh
+        ? `: ${Math.floor(Date.now() / 1000)}:0;${command}\n`
+        : `${command}\n`;
       await appendFile(histPath, line, 'utf-8');
     } catch {
       // Silently ignore write failures
@@ -59,15 +55,14 @@ class CommandHistoryStore {
   }
 
   private async removeFromShellHistory(command: string): Promise<void> {
-    const histPath = this.getShellHistoryPath();
+    const histPath = this.shellHistoryPath;
     if (!histPath) return;
     try {
       const raw = await readFile(histPath, 'utf-8');
       const lines = raw.split('\n');
       const filtered = lines.filter((line) => {
         if (!line) return true;
-        // zsh extended_history format: ": timestamp:0;command"
-        const match = line.match(/^: \d+:\d+;(.+)$/);
+        const match = line.match(ZSH_EXTENDED_LINE_RE);
         if (match) return match[1] !== command;
         // Plain format
         return line !== command;
@@ -79,7 +74,7 @@ class CommandHistoryStore {
   }
 
   private async clearShellHistory(): Promise<void> {
-    const histPath = this.getShellHistoryPath();
+    const histPath = this.shellHistoryPath;
     if (!histPath) return;
     try {
       await writeFile(histPath, '', 'utf-8');

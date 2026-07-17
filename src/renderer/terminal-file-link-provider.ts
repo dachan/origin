@@ -38,6 +38,7 @@ export interface CwdHistoryEntry {
 }
 
 export class FileSystemLinkProvider implements ILinkProvider {
+  private terminal: Terminal;
   private ptyIdRef: { current: string | null };
   private cwdHistoryRef: { current: CwdHistoryEntry[] };
   private handleContextMenu = (): void => {
@@ -45,9 +46,11 @@ export class FileSystemLinkProvider implements ILinkProvider {
   };
 
   constructor(
+    terminal: Terminal,
     ptyIdRef: { current: string | null },
     cwdHistoryRef: { current: CwdHistoryEntry[] }
   ) {
+    this.terminal = terminal;
     this.ptyIdRef = ptyIdRef;
     this.cwdHistoryRef = cwdHistoryRef;
     window.addEventListener('contextmenu', this.handleContextMenu);
@@ -99,8 +102,6 @@ export class FileSystemLinkProvider implements ILinkProvider {
     }
     if (!cwd) return undefined;
 
-    // We need the terminal buffer to read line text, but ILinkProvider
-    // doesn't get a terminal reference. We stored it on the provider instead.
     const lineText = this.getLineText(bufferLineNumber);
     if (!lineText) return undefined;
 
@@ -214,11 +215,7 @@ export class FileSystemLinkProvider implements ILinkProvider {
     return links.length > 0 ? links : undefined;
   }
 
-  // Terminal reference set externally after construction
-  terminal: Terminal | null = null;
-
   private getLineText(bufferLineNumber: number): string | null {
-    if (!this.terminal) return null;
     const line = this.terminal.buffer.active.getLine(bufferLineNumber - 1);
     return line ? line.translateToString(true) : null;
   }
@@ -236,7 +233,6 @@ export class FileSystemLinkProvider implements ILinkProvider {
     // contains @ (user@host), contains : (host:path), ends with $ or # (prompt chars)
     if (/[@:]|[$#]\s*$/.test(token)) return null;
 
-    if (!this.terminal) return null;
     const line = this.terminal.buffer.active.getLine(bufferLineNumber - 1);
     if (!line) return null;
     const cell = line.getCell(startCol);

@@ -5,7 +5,11 @@ import path from 'path';
 import { ptyManager } from './pty-manager';
 import { commandHistoryStore } from './persistence/command-history';
 import { stickyCommandsStore } from './persistence/sticky-commands';
-import type { StickyCommand } from '../shared/types';
+import type {
+  StickyCommand,
+  ResolvedToken,
+  FileStatSummary,
+} from '../shared/types';
 
 export function registerIpcHandlers(): void {
   // --- PTY Channels ---
@@ -87,9 +91,9 @@ export function registerIpcHandlers(): void {
     async (
       _event,
       { cwd, tokens }: { cwd: string; tokens: string[] }
-    ): Promise<{ name: string; type: 'file' | 'directory' | null }[]> => {
-      const results = await Promise.all(
-        tokens.map(async (token) => {
+    ): Promise<ResolvedToken[]> => {
+      return Promise.all(
+        tokens.map(async (token): Promise<ResolvedToken> => {
           try {
             const fullPath = path.resolve(cwd, token);
             // Prevent path traversal outside the CWD
@@ -104,26 +108,19 @@ export function registerIpcHandlers(): void {
             const stat = await fs.promises.stat(fullPath);
             return {
               name: token,
-              type: (stat.isDirectory() ? 'directory' : 'file') as
-                | 'file'
-                | 'directory',
+              type: stat.isDirectory() ? 'directory' : 'file',
             };
           } catch {
             return { name: token, type: null };
           }
         })
       );
-      return results;
     }
   );
 
   ipcMain.handle(
     'fs:stat',
-    async (_event, filePath: string): Promise<{
-      size: number;
-      created: string;
-      modified: string;
-    } | null> => {
+    async (_event, filePath: string): Promise<FileStatSummary | null> => {
       try {
         const resolved = path.resolve(filePath);
         const stat = await fs.promises.stat(resolved);

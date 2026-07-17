@@ -87,6 +87,13 @@ const createWindow = (): void => {
   win.on('resize', trackBounds);
   win.on('move', trackBounds);
   win.on('close', () => saveWindowState(win, lastNormalBounds));
+  // A renderer reload spawns a fresh PTY; kill the old shells so they
+  // don't leak with no renderer attached.
+  win.webContents.on('did-start-navigation', (event) => {
+    if (event.isMainFrame && !event.isSameDocument) {
+      ptyManager.disposeAll();
+    }
+  });
   win.on('closed', () => {
     // On macOS the app stays alive after the window closes — kill the shells
     // so they don't keep running with no window attached.
@@ -152,14 +159,13 @@ function buildAppMenu(): void {
     },
     {
       label: 'View',
+      // No zoom roles here: the renderer implements font-size zoom on
+      // Cmd+=/-/0, and the menu accelerators would intercept those keys
+      // and apply page zoom instead.
       submenu: [
         { role: 'reload' },
         { role: 'forceReload' },
         { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
         { type: 'separator' },
         { role: 'togglefullscreen' },
       ],

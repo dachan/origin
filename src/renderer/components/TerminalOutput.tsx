@@ -5,9 +5,15 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import { SearchAddon } from '@xterm/addon-search';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
-import { useTerminal } from '../context/TerminalContext';
+import {
+  useTerminal,
+  MIN_FONT_SIZE,
+  MAX_FONT_SIZE,
+  DEFAULT_FONT_SIZE,
+} from '../context/TerminalContext';
 import { FileSystemLinkProvider } from '../terminal-file-link-provider';
 import { showToast } from './Toast';
+import { ChevronUpIcon, ChevronDownIcon, XMarkIcon } from './icons';
 
 const SEARCH_MATCH_BG = '#e0af68';
 const SEARCH_MATCH_FG = '#1a1b26';
@@ -160,8 +166,7 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
     fitAddonRef.current = fitAddon;
 
     // Register file link provider
-    const linkProvider = new FileSystemLinkProvider(ptyIdRef, cwdHistoryRef);
-    linkProvider.terminal = term;
+    const linkProvider = new FileSystemLinkProvider(term, ptyIdRef, cwdHistoryRef);
     const linkDisposable = term.registerLinkProvider(linkProvider);
 
     // Handle resize
@@ -240,18 +245,18 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
       if (!(e.metaKey || e.ctrlKey)) return;
       if (e.key === '=' || e.key === '+') {
         e.preventDefault();
-        const next = Math.min(32, fontSize + 1);
+        const next = Math.min(MAX_FONT_SIZE, fontSize + 1);
         setFontSize(next);
         showToast(`Font size: ${next}px`);
       } else if (e.key === '-') {
         e.preventDefault();
-        const next = Math.max(8, fontSize - 1);
+        const next = Math.max(MIN_FONT_SIZE, fontSize - 1);
         setFontSize(next);
         showToast(`Font size: ${next}px`);
       } else if (e.key === '0') {
         e.preventDefault();
-        setFontSize(14);
-        showToast('Font size: 14px (default)');
+        setFontSize(DEFAULT_FONT_SIZE);
+        showToast(`Font size: ${DEFAULT_FONT_SIZE}px (default)`);
       }
     };
     window.addEventListener('keydown', handler);
@@ -283,21 +288,21 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
             onClick={() => searchAddonRef.current?.findPrevious(searchQuery, SEARCH_FIND_OPTIONS)}
             title="Previous (Shift+Enter)"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+            <ChevronUpIcon strokeWidth={2} />
           </button>
           <button
             className="terminal-search-btn"
             onClick={() => searchAddonRef.current?.findNext(searchQuery, SEARCH_FIND_OPTIONS)}
             title="Next (Enter)"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+            <ChevronDownIcon strokeWidth={2} />
           </button>
           <button
             className="terminal-search-btn"
             onClick={closeSearch}
             title="Close (Escape)"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M6 18 18 6M6 6l12 12" /></svg>
+            <XMarkIcon />
           </button>
         </div>
       )}
@@ -310,7 +315,7 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
             onClick={togglePassthroughMode}
             title="Exit Passthrough Mode (Cmd+E)"
           >
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M6 18 18 6M6 6l12 12" /></svg>
+            <XMarkIcon />
           </button>
         </div>
       )}

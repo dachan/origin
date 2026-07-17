@@ -27,6 +27,7 @@ interface TerminalContextValue {
   setIsPasswordMode: (value: boolean) => void;
   historyIndex: number;
   executeCommand: (command: string) => void;
+  clearTerminal: () => void;
   removeFromHistory: (command: string) => void;
   clearHistory: () => void;
   addStickyCommand: (label: string, command: string) => void;
@@ -42,6 +43,17 @@ interface TerminalContextValue {
 const TerminalContext = createContext<TerminalContextValue | null>(null);
 
 const PASSWORD_PROMPT_RE = /password[\s:!?]|passphrase[\s:]/i;
+
+// Ctrl+U (kill-line): clears anything already buffered on the shell's input
+// line (e.g. from tab completion) so the written command runs on its own.
+export const KILL_LINE = '\x15';
+
+// Cap the CWD-per-line history so it doesn't grow for the whole session.
+const MAX_CWD_HISTORY = 500;
+
+export const MIN_FONT_SIZE = 8;
+export const MAX_FONT_SIZE = 32;
+export const DEFAULT_FONT_SIZE = 14;
 
 export function useTerminal(): TerminalContextValue {
   const ctx = useContext(TerminalContext);
@@ -66,11 +78,11 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [fontSize, setFontSizeState] = useState(() => {
     const saved = localStorage.getItem('terminal-font-size');
-    return saved ? Number(saved) : 14;
+    return saved ? Number(saved) : DEFAULT_FONT_SIZE;
   });
 
   const setFontSize = useCallback((size: number) => {
-    const clamped = Math.max(8, Math.min(32, size));
+    const clamped = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, size));
     setFontSizeState(clamped);
     localStorage.setItem('terminal-font-size', String(clamped));
   }, []);
@@ -167,13 +179,17 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
           term.buffer.active.baseY + term.buffer.active.cursorY;
         window.electronAPI.fsGetCwd(ptyId).then((cwd) => {
           if (cwd) {
-            cwdHistoryRef.current.push({ line: cursorLine, cwd });
+            const history = cwdHistoryRef.current;
+            history.push({ line: cursorLine, cwd });
+            if (history.length > MAX_CWD_HISTORY) {
+              history.splice(0, history.length - MAX_CWD_HISTORY);
+            }
           }
         }).catch(() => { /* CWD snapshot is best-effort */ });
       }
 
       // Send to PTY
-      window.electronAPI.ptyWrite(ptyId, command + '\n');
+      window.electronAPI.ptyWrite(ptyId, KILL_LINE + command + '\n');
 
       // Append to history
       window.electronAPI.historyAppend(command).catch(() => { /* best-effort */ });
@@ -186,6 +202,11 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [ptyId]
   );
+
+  const clearTerminal = useCallback(() => {
+    if (!ptyId) return;
+    window.electronAPI.ptyWrite(ptyId, KILL_LINE + 'clear\n');
+  }, [ptyId]);
 
   const removeFromHistory = useCallback((command: string) => {
     window.electronAPI.historyRemove(command).catch(() => { /* best-effort */ });
@@ -275,6 +296,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsPasswordMode,
       historyIndex,
       executeCommand,
+      clearTerminal,
       removeFromHistory,
       clearHistory,
       addStickyCommand,
@@ -298,6 +320,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       historyIndex,
       fontSize,
       executeCommand,
+      clearTerminal,
       removeFromHistory,
       clearHistory,
       addStickyCommand,

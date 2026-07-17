@@ -1,15 +1,9 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { useTerminal } from '../context/TerminalContext';
+import { useTerminal, KILL_LINE } from '../context/TerminalContext';
 import Autocomplete from './Autocomplete';
 import Prompt from './Prompt';
 import { showToast } from './Toast';
-
-// Heroicons: command-line (outline)
-const CommandLineIcon: React.FC = () => (
-  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-    <path d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z" />
-  </svg>
-);
+import { CommandLineIcon } from './icons';
 
 const CommandInput: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -27,6 +21,7 @@ const CommandInput: React.FC = () => {
     historyIndex,
     setHistoryIndex,
     executeCommand,
+    clearTerminal,
     filterHistory,
     isRawMode,
     isPassthroughMode,
@@ -61,9 +56,7 @@ const CommandInput: React.FC = () => {
         if (now - lastEscRef.current < 250) {
           e.preventDefault();
           lastEscRef.current = 0;
-          if (ptyId) {
-            window.electronAPI.ptyWrite(ptyId, 'clear\n');
-          }
+          clearTerminal();
         } else {
           lastEscRef.current = now;
         }
@@ -201,7 +194,9 @@ const CommandInput: React.FC = () => {
       if (e.key === 'Tab' && !showAutocomplete) {
         e.preventDefault();
         if (ptyId && inputValue.trim()) {
-          window.electronAPI.ptyWrite(ptyId, inputValue + '\t');
+          // Kill any previously buffered line first so repeated Tabs (or a
+          // following Enter, which also kills the line) stay in sync.
+          window.electronAPI.ptyWrite(ptyId, KILL_LINE + inputValue + '\t');
           showToast('Tab completing...');
         }
       }
@@ -215,6 +210,7 @@ const CommandInput: React.FC = () => {
       history,
       historyIndex,
       executeCommand,
+      clearTerminal,
       setHistoryIndex,
     ]
   );
@@ -223,6 +219,8 @@ const CommandInput: React.FC = () => {
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const value = e.target.value;
       setInputValue(value);
+      // Editing the input starts a fresh history walk
+      setHistoryIndex(-1);
 
       // Trigger autocomplete
       if (value.trim().length > 0) {
@@ -234,7 +232,7 @@ const CommandInput: React.FC = () => {
         setShowAutocomplete(false);
       }
     },
-    [filterHistory]
+    [filterHistory, setHistoryIndex]
   );
 
   const handlePasswordKeyDown = useCallback(
@@ -250,6 +248,12 @@ const CommandInput: React.FC = () => {
         if (ptyId) {
           window.electronAPI.ptyWrite(ptyId, '\x03');
         }
+        setPasswordValue('');
+        setIsPasswordMode(false);
+      } else if (e.key === 'Escape') {
+        // Escape hatch for false-positive password prompt detection:
+        // return to the normal input without sending anything.
+        e.preventDefault();
         setPasswordValue('');
         setIsPasswordMode(false);
       }

@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { StickyCommand } from '../shared/types';
+import type {
+  StickyCommand,
+  PtyDataPayload,
+  PtyExitPayload,
+  ResolvedToken,
+  FileStatSummary,
+} from '../shared/types';
 
 // Subscribe to an IPC channel; returns an unsubscribe function.
 function subscribe<T>(channel: string, callback: (payload: T) => void): () => void {
@@ -24,17 +30,11 @@ const api = {
     ipcRenderer.send('pty:resize', { id, cols, rows });
   },
 
-  onPtyData: (
-    callback: (payload: { id: string; data: string }) => void
-  ): (() => void) => subscribe('pty:data', callback),
+  onPtyData: (callback: (payload: PtyDataPayload) => void): (() => void) =>
+    subscribe('pty:data', callback),
 
-  onPtyExit: (
-    callback: (payload: {
-      id: string;
-      exitCode: number;
-      signal: number;
-    }) => void
-  ): (() => void) => subscribe('pty:exit', callback),
+  onPtyExit: (callback: (payload: PtyExitPayload) => void): (() => void) =>
+    subscribe('pty:exit', callback),
 
   // Persistence
   historyLoad: (): Promise<string[]> => ipcRenderer.invoke('history:load'),
@@ -57,15 +57,10 @@ const api = {
   fsGetCwd: (ptyId: string): Promise<string | null> =>
     ipcRenderer.invoke('fs:getCwd', ptyId),
 
-  fsResolveTokens: (
-    cwd: string,
-    tokens: string[]
-  ): Promise<{ name: string; type: 'file' | 'directory' | null }[]> =>
+  fsResolveTokens: (cwd: string, tokens: string[]): Promise<ResolvedToken[]> =>
     ipcRenderer.invoke('fs:resolveTokens', { cwd, tokens }),
 
-  fsStat: (
-    filePath: string
-  ): Promise<{ size: number; created: string; modified: string } | null> =>
+  fsStat: (filePath: string): Promise<FileStatSummary | null> =>
     ipcRenderer.invoke('fs:stat', filePath),
 
   fsOpenFile: (filePath: string): Promise<string> =>

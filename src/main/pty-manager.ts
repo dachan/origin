@@ -1,6 +1,9 @@
 import * as pty from 'node-pty';
 import os from 'os';
 import { execFile } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
 
 interface PtySession {
   id: string;
@@ -65,25 +68,22 @@ class PtyManager {
 
     const pid = session.process.pid;
     try {
-      const cwd = await new Promise<string>((resolve, reject) => {
-        // Find the foreground child process of the PTY
-        execFile('pgrep', ['-P', String(pid)], (_err, stdout) => {
-          const childPid = (stdout || '').trim().split('\n').pop() || String(pid);
-          // Use lsof to get the CWD of the child process
-          execFile(
-            'lsof',
-            ['-a', '-d', 'cwd', '-p', childPid, '-Fn'],
-            (lsofErr, lsofOut) => {
-              if (lsofErr) return reject(lsofErr);
-              // lsof -Fn output: lines starting with 'n' contain the path
-              const match = lsofOut.match(/^n(.+)$/m);
-              if (match) resolve(match[1]);
-              else reject(new Error('Could not parse lsof output'));
-            }
-          );
-        });
-      });
+      // Find the foreground child process of the PTY (fall back to the
+      // shell itself if it has no children).
+      const children = await execFileAsync('pgrep', ['-P', String(pid)])
+        .then(({ stdout }) => stdout)
+        .catch(() => '');
+      const childPid = children.trim().split('\n').pop() || String(pid);
 
+      // Use lsof to get the CWD of that process.
+      // lsof -Fn output: lines starting with 'n' contain the path.
+      const { stdout: lsofOut } = await execFileAsync('lsof', [
+        '-a', '-d', 'cwd', '-p', childPid, '-Fn',
+      ]);
+      const match = lsofOut.match(/^n(.+)$/m);
+      if (!match) return null;
+
+      const cwd = match[1];
       this.cwdCache.set(id, { cwd, ts: Date.now() });
       return cwd;
     } catch {
