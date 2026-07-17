@@ -1,4 +1,5 @@
 import type { ILinkProvider, ILink, Terminal, IBufferRange } from '@xterm/xterm';
+import type { ResolvedToken } from '../shared/types';
 
 // Tokens that look like ls -l metadata rather than filenames
 const SKIP_PATTERNS = [
@@ -120,16 +121,20 @@ export class FileSystemLinkProvider implements ILinkProvider {
     if (tokenEntries.length === 0) return undefined;
 
     // Strip ls indicator suffixes before resolving against the filesystem
-    let cleanTokens = tokenEntries.map((e) => stripIndicator(e.token));
+    const cleanTokens = tokenEntries.map((e) => stripIndicator(e.token));
     let results = await window.electronAPI.fsResolveTokens(cwd, cleanTokens);
 
     // Pass 2: for unresolved multi-word tokens, split into individual words
-    // and try again (handles single-space column gaps in ls output)
+    // and try again (handles single-space column gaps in ls output).
+    // Entries that already resolved in pass 1 are kept as-is rather than
+    // re-queried, since fsResolveTokens does a filesystem stat per token.
     const hasUnresolvedMultiWord = results.some(
       (r, i) => !r.type && cleanTokens[i].includes(' ')
     );
     if (hasUnresolvedMultiWord) {
       const expanded: { token: string; startCol: number }[] = [];
+      const expandedResults: ResolvedToken[] = [];
+      const toResolveIndices: number[] = [];
       for (let i = 0; i < tokenEntries.length; i++) {
         if (!results[i].type && tokenEntries[i].token.includes(' ')) {
           // Split this grouped token into individual words
@@ -142,15 +147,26 @@ export class FileSystemLinkProvider implements ILinkProvider {
                 token: word,
                 startCol: tokenEntries[i].startCol + wordMatch.index,
               });
+              toResolveIndices.push(expanded.length - 1);
+              expandedResults.push({ name: word, type: null });
             }
           }
         } else {
           expanded.push(tokenEntries[i]);
+          expandedResults.push(results[i]);
         }
       }
+      const wordsToResolve = toResolveIndices.map(
+        (idx) => stripIndicator(expanded[idx].token)
+      );
+      if (wordsToResolve.length > 0) {
+        const resolved = await window.electronAPI.fsResolveTokens(cwd, wordsToResolve);
+        toResolveIndices.forEach((idx, j) => {
+          expandedResults[idx] = resolved[j];
+        });
+      }
       tokenEntries = expanded;
-      cleanTokens = tokenEntries.map((e) => stripIndicator(e.token));
-      results = await window.electronAPI.fsResolveTokens(cwd, cleanTokens);
+      results = expandedResults;
     }
 
     const links: ILink[] = [];
@@ -295,9 +311,14 @@ export class FileSystemLinkProvider implements ILinkProvider {
       if (type === 'file') lines.push(this.formatSize(stat.size));
       lines.push(`Created: ${this.formatDate(stat.created)}`);
       lines.push(`Modified: ${this.formatDate(stat.modified)}`);
-      this.tooltipEl.innerHTML = lines
-        .map((l, i) => `<div style="${i === 0 ? 'margin-bottom:4px' : 'color:#565f89'}">${l}</div>`)
-        .join('');
+      this.tooltipEl.replaceChildren(
+        ...lines.map((l, i) => {
+          const div = document.createElement('div');
+          div.style.cssText = i === 0 ? 'margin-bottom:4px' : 'color:#565f89';
+          div.textContent = l;
+          return div;
+        })
+      );
     }).catch(() => { /* best-effort */ });
   }
 
