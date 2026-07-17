@@ -311,9 +311,14 @@ export class FileSystemLinkProvider implements ILinkProvider {
       if (type === 'file') lines.push(this.formatSize(stat.size));
       lines.push(`Created: ${this.formatDate(stat.created)}`);
       lines.push(`Modified: ${this.formatDate(stat.modified)}`);
-      this.tooltipEl.innerHTML = lines
-        .map((l, i) => `<div style="${i === 0 ? 'margin-bottom:4px' : 'color:#565f89'}">${l}</div>`)
-        .join('');
+      this.tooltipEl.replaceChildren(
+        ...lines.map((l, i) => {
+          const div = document.createElement('div');
+          div.style.cssText = i === 0 ? 'margin-bottom:4px' : 'color:#565f89';
+          div.textContent = l;
+          return div;
+        })
+      );
     }).catch(() => { /* best-effort */ });
   }
 
