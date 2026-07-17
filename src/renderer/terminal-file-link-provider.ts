@@ -147,15 +147,26 @@ export class FileSystemLinkProvider implements ILinkProvider {
                 token: word,
                 startCol: tokenEntries[i].startCol + wordMatch.index,
               });
+              toResolveIndices.push(expanded.length - 1);
+              expandedResults.push({ name: word, type: null });
             }
           }
         } else {
           expanded.push(tokenEntries[i]);
+          expandedResults.push(results[i]);
         }
       }
+      const wordsToResolve = toResolveIndices.map(
+        (idx) => stripIndicator(expanded[idx].token)
+      );
+      if (wordsToResolve.length > 0) {
+        const resolved = await window.electronAPI.fsResolveTokens(cwd, wordsToResolve);
+        toResolveIndices.forEach((idx, j) => {
+          expandedResults[idx] = resolved[j];
+        });
+      }
       tokenEntries = expanded;
-      cleanTokens = tokenEntries.map((e) => stripIndicator(e.token));
-      results = await window.electronAPI.fsResolveTokens(cwd, cleanTokens);
+      results = expandedResults;
     }
 
     const links: ILink[] = [];
