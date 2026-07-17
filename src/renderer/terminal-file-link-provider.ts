@@ -1,4 +1,5 @@
 import type { ILinkProvider, ILink, Terminal, IBufferRange } from '@xterm/xterm';
+import type { ResolvedToken } from '../shared/types';
 
 // Tokens that look like ls -l metadata rather than filenames
 const SKIP_PATTERNS = [
@@ -120,16 +121,20 @@ export class FileSystemLinkProvider implements ILinkProvider {
     if (tokenEntries.length === 0) return undefined;
 
     // Strip ls indicator suffixes before resolving against the filesystem
-    let cleanTokens = tokenEntries.map((e) => stripIndicator(e.token));
+    const cleanTokens = tokenEntries.map((e) => stripIndicator(e.token));
     let results = await window.electronAPI.fsResolveTokens(cwd, cleanTokens);
 
     // Pass 2: for unresolved multi-word tokens, split into individual words
-    // and try again (handles single-space column gaps in ls output)
+    // and try again (handles single-space column gaps in ls output).
+    // Entries that already resolved in pass 1 are kept as-is rather than
+    // re-queried, since fsResolveTokens does a filesystem stat per token.
     const hasUnresolvedMultiWord = results.some(
       (r, i) => !r.type && cleanTokens[i].includes(' ')
     );
     if (hasUnresolvedMultiWord) {
       const expanded: { token: string; startCol: number }[] = [];
+      const expandedResults: ResolvedToken[] = [];
+      const toResolveIndices: number[] = [];
       for (let i = 0; i < tokenEntries.length; i++) {
         if (!results[i].type && tokenEntries[i].token.includes(' ')) {
           // Split this grouped token into individual words
