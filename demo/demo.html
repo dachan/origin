@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=1280, height=720" />
+  <meta name="viewport" content="width=1920, height=1080" />
   <meta name="color-scheme" content="dark" />
   <title>Origin Demo</title>
   <style>
@@ -30,8 +30,8 @@
     }
 
     body {
-      width: 1280px;
-      height: 720px;
+      width: 1920px;
+      height: 1080px;
       overflow: hidden;
       background:
         radial-gradient(1200px 680px at 50% 18%, rgba(122, 162, 247, 0.08), transparent 58%),
@@ -54,6 +54,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      /* Equal outer margin around the window (50px on a 1920×1080 frame) */
+      padding: 0;
       opacity: 0;
       transform: scale(0.972) translateY(10px);
       transition:
@@ -66,8 +68,9 @@
     }
 
     .window {
-      width: 1020px;
-      height: 590px;
+      /* Equal 50px padding on all sides of the 1920×1080 frame */
+      width: 1820px;
+      height: 980px;
       background: var(--tokyo);
       border-radius: 12px;
       overflow: hidden;
@@ -119,7 +122,7 @@
       height: calc(100% - 38px);
       display: flex;
       flex-direction: column;
-      padding: 14px 16px 8px;
+      padding: 16px;
       position: relative;
       background: var(--tokyo);
     }
@@ -130,19 +133,19 @@
       flex-direction: column;
       overflow: hidden;
       background: var(--tokyo);
-      gap: 14px;
+      gap: 16px;
       min-height: 0;
     }
 
     .terminal-output {
       flex: 1;
       overflow: hidden;
-      padding: 2px 2px 0;
+      padding: 4px 4px 0;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      font-size: 13.5px;
-      line-height: 1.55;
+      font-size: 22px;
+      line-height: 1.5;
     }
 
     .line { white-space: pre-wrap; word-break: break-all; }
@@ -271,29 +274,29 @@
     .command-input-container {
       position: relative;
       background: var(--tokyo);
-      padding: 12px 4px 6px;
+      padding: 14px 4px 8px;
       flex-shrink: 0;
       border-top: 1px solid var(--tokyo-border);
     }
     .command-input-row {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
     .prompt-indicator {
       color: var(--blue);
-      font-size: 14px;
-      line-height: 22px;
+      font-size: 22px;
+      line-height: 30px;
       flex-shrink: 0;
     }
     .prompt-arrow { font-weight: 700; }
     .command-textarea {
       flex: 1;
       position: relative;
-      font-size: 14px;
-      line-height: 22px;
+      font-size: 22px;
+      line-height: 30px;
       color: var(--fg);
-      min-height: 22px;
+      min-height: 30px;
     }
     .input-placeholder {
       color: var(--muted);
@@ -302,8 +305,8 @@
     .input-placeholder.hidden { display: none; }
     .cursor {
       display: inline-block;
-      width: 7px;
-      height: 16px;
+      width: 10px;
+      height: 22px;
       background: var(--blue);
       vertical-align: text-bottom;
       margin-left: 1px;
@@ -338,8 +341,8 @@
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
     .autocomplete-item {
-      padding: 7px 14px;
-      font-size: 13px;
+      padding: 10px 16px;
+      font-size: 18px;
       color: var(--fg-dim);
       white-space: nowrap;
       overflow: hidden;
@@ -374,9 +377,9 @@
       display: none;
       flex: 1;
       min-width: 0;
-      height: 22px;
-      font-size: 14px;
-      line-height: 22px;
+      height: 30px;
+      font-size: 22px;
+      line-height: 30px;
       letter-spacing: 2px;
       color: var(--fg);
       text-align: left;
@@ -395,13 +398,13 @@
       display: none;
       align-items: center;
       gap: 8px;
-      padding: 12px 4px 6px;
+      padding: 14px 4px 8px;
       background: var(--tokyo);
       border-top: 1px solid var(--tokyo-border);
       color: var(--yellow);
-      font-size: 13.5px;
+      font-size: 20px;
       font-weight: 600;
-      line-height: 22px;
+      line-height: 30px;
       flex-shrink: 0;
       opacity: 0;
       transform: translateY(4px);
@@ -590,7 +593,7 @@
     .scene-caption {
       position: absolute;
       left: 50%;
-      bottom: 28px;
+      bottom: 40px;
       transform: translateX(-50%) translateY(10px);
       z-index: 500;
       opacity: 0;
@@ -598,17 +601,17 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      padding: 12px 22px;
-      border-radius: 14px;
-      background: rgba(18, 20, 28, 0.72);
+      gap: 8px;
+      padding: 20px 40px;
+      border-radius: 20px;
+      background: rgba(18, 20, 28, 0.78);
       border: 1px solid rgba(255, 255, 255, 0.06);
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
       backdrop-filter: blur(18px);
       transition:
         opacity 0.4s var(--ease-out),
         transform 0.45s var(--ease-out);
-      max-width: 720px;
+      max-width: 1100px;
       text-align: center;
     }
     .scene-caption.visible {
@@ -617,26 +620,26 @@
     }
     .scene-caption strong {
       color: var(--fg);
-      font-size: 15px;
+      font-size: 34px;
       font-weight: 600;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.015em;
     }
     .scene-caption span {
       color: var(--fg-dim);
-      font-size: 13px;
+      font-size: 24px;
       font-weight: 400;
     }
 
     .kbd-badge {
       position: absolute;
-      top: 48px;
+      top: 56px;
       left: 50%;
       transform: translateX(-50%) translateY(-6px);
       background: rgba(18, 20, 28, 0.78);
       border: 1px solid rgba(255, 255, 255, 0.07);
       border-radius: 999px;
-      padding: 8px 14px;
-      font-size: 13px;
+      padding: 10px 18px;
+      font-size: 18px;
       color: var(--fg-dim);
       z-index: 700;
       opacity: 0;
@@ -653,11 +656,11 @@
     .kbd-badge kbd {
       background: rgba(41, 46, 66, 0.95);
       border: 1px solid var(--tokyo-border-strong);
-      border-radius: 5px;
-      padding: 2px 8px;
+      border-radius: 6px;
+      padding: 3px 10px;
       color: var(--fg);
       margin-right: 8px;
-      font-size: 12px;
+      font-size: 16px;
       font-family: "SF Mono", Menlo, Monaco, monospace;
     }
 
@@ -696,7 +699,7 @@
       to { opacity: 1; transform: translateY(0); }
     }
     .logo {
-      font-size: 92px;
+      font-size: 120px;
       font-weight: 650;
       color: var(--fg);
       letter-spacing: -0.04em;
@@ -707,22 +710,22 @@
       color: var(--blue);
     }
     .tagline {
-      font-size: 24px;
+      font-size: 32px;
       color: var(--fg-dim);
       font-weight: 400;
       letter-spacing: -0.015em;
     }
-    .outro .logo { font-size: 72px; }
+    .outro .logo { font-size: 96px; }
     .outro .tagline {
-      font-size: 18px;
+      font-size: 24px;
       margin-top: 4px;
     }
     .outro-shortcuts {
-      margin-top: 36px;
+      margin-top: 44px;
       display: flex;
-      gap: 18px;
+      gap: 22px;
       color: var(--muted);
-      font-size: 14px;
+      font-size: 18px;
       opacity: 0;
       transform: translateY(8px);
     }
@@ -733,9 +736,9 @@
       background: rgba(41, 46, 66, 0.9);
       border: 1px solid var(--tokyo-border-strong);
       border-radius: 6px;
-      padding: 4px 9px;
+      padding: 5px 11px;
       color: var(--fg);
-      font-size: 13px;
+      font-size: 16px;
       font-family: "SF Mono", Menlo, Monaco, monospace;
       margin-right: 6px;
     }
@@ -998,7 +1001,7 @@
       { at: 2800,  fn: introOut },
       { at: 3200,  fn: showStage },
       { at: 3800,  fn: () => showScene("Clickable directories", "Hover a folder · click to cd") },
-      { at: 4200,  fn: () => beginCursorMove($("dirSrc"), { x: 980, y: 390 }, 4200, 4800) },
+      { at: 4200,  fn: () => beginCursorMove($("dirSrc"), { x: 1470, y: 585 }, 4200, 4800) },
       { at: 5000,  fn: hoverDir },
       { at: 6400,  fn: clickDirPress },
       { at: 6560,  fn: clickDirComplete },

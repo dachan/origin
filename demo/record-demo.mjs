@@ -17,11 +17,12 @@ const demoHtml = path.join(__dirname, "demo.html");
 const outputDir = path.join(__dirname, "output");
 const framesDir = path.join(outputDir, "frames");
 
-const WIDTH = 1280;
-const HEIGHT = 720;
-const SCALE = 2;
-const OUTPUT_WIDTH = WIDTH * SCALE;
-const OUTPUT_HEIGHT = HEIGHT * SCALE;
+const WIDTH = 1920;
+const HEIGHT = 1080;
+// 1.5× device scale → 2880×1620 export (sharper than 1080p, lighter than 4K)
+const SCALE = 1.5;
+const OUTPUT_WIDTH = Math.round(WIDTH * SCALE);
+const OUTPUT_HEIGHT = Math.round(HEIGHT * SCALE);
 const FPS = 30;
 const FRAME_MS = 1000 / FPS;
 const FALLBACK_DURATION_MS = 54000;
@@ -149,7 +150,7 @@ runFfmpeg([
   "-frames:v",
   String(totalFrames),
   "-vf",
-  `scale=in_range=full:out_range=full,fps=12,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=192:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle`,
+  `scale=in_range=full:out_range=full,fps=12,scale=1280:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=192:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle`,
   "-loop",
   "0",
   gifPath,
