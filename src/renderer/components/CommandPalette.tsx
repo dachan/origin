@@ -33,9 +33,14 @@ const CommandPalette: React.FC = () => {
   const [confirmingClear, setConfirmingClear] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const pinInputRef = useRef<HTMLInputElement>(null);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Build combined list: sticky commands first, then recent history
+  // Build combined list: sticky commands first, then recent history.
+  // Skip the work entirely while the palette is closed, since this component
+  // re-renders on every terminal state change.
   const filteredItems = useMemo((): PaletteItem[] => {
+    if (!isPaletteOpen) return [];
+
     const query = searchQuery.toLowerCase();
 
     const stickyItems = stickyCommands
@@ -63,7 +68,7 @@ const CommandPalette: React.FC = () => {
       }));
 
     return [...stickyItems, ...recentItems];
-  }, [searchQuery, stickyCommands, history]);
+  }, [isPaletteOpen, searchQuery, stickyCommands, history]);
 
   // Focus input when palette opens
   useEffect(() => {
@@ -75,6 +80,12 @@ const CommandPalette: React.FC = () => {
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [isPaletteOpen]);
+
+  // Keep the selected item visible while navigating with the keyboard.
+  useEffect(() => {
+    if (!isPaletteOpen || pinningCommand !== null) return;
+    itemRefs.current[selectedIndex]?.scrollIntoView({ block: 'nearest' });
+  }, [isPaletteOpen, selectedIndex, filteredItems, pinningCommand]);
 
   // Focus pin label input when pinning
   useEffect(() => {
@@ -233,6 +244,7 @@ const CommandPalette: React.FC = () => {
             return (
             <div
               key={`${item.type}-${item.id}`}
+              ref={(el) => { itemRefs.current[index] = el; }}
               className={`palette-item ${index === selectedIndex ? 'selected' : ''} ${item.type === 'sticky' ? 'sticky' : ''}`}
               onClick={() => handleSelect(item)}
               onMouseEnter={() => setSelectedIndex(index)}
@@ -291,11 +303,6 @@ const CommandPalette: React.FC = () => {
             </div>
             );
           })}
-        </div>
-        <div className="palette-footer">
-          <span><kbd>Enter</kbd> Run</span>
-          <span><kbd>↑↓</kbd> Navigate</span>
-          <span><kbd>Esc</kbd> Close</span>
         </div>
       </div>
     </div>

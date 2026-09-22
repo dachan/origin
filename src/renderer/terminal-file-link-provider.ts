@@ -1,4 +1,10 @@
-import type { ILinkProvider, ILink, Terminal, IBufferRange } from '@xterm/xterm';
+import type {
+  ILinkProvider,
+  ILink,
+  Terminal,
+  IBufferRange,
+  IBufferLine,
+} from '@xterm/xterm';
 import type { ResolvedToken } from '../shared/types';
 
 // Tokens that look like ls -l metadata rather than filenames
@@ -79,13 +85,18 @@ export class FileSystemLinkProvider implements ILinkProvider {
 
   private cwdForLine(bufferLineNumber: number): string | null {
     const history = this.cwdHistoryRef.current;
-    // Find the last entry where entry.line <= bufferLineNumber
+    // Entries are appended in ascending line order, so binary-search for the
+    // last entry whose line is <= bufferLineNumber instead of scanning.
+    let lo = 0;
+    let hi = history.length - 1;
     let best: CwdHistoryEntry | null = null;
-    for (const entry of history) {
-      if (entry.line <= bufferLineNumber) {
-        best = entry;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (history[mid].line <= bufferLineNumber) {
+        best = history[mid];
+        lo = mid + 1;
       } else {
-        break;
+        hi = mid - 1;
       }
     }
     return best ? best.cwd : null;
@@ -103,8 +114,9 @@ export class FileSystemLinkProvider implements ILinkProvider {
     }
     if (!cwd) return undefined;
 
-    const lineText = this.getLineText(bufferLineNumber);
-    if (!lineText) return undefined;
+    const line = this.terminal.buffer.active.getLine(bufferLineNumber - 1);
+    const lineText = line ? line.translateToString(true) : null;
+    if (!line || !lineText) return undefined;
 
     // Pass 1: tokenize preserving single-space filenames (e.g. "Stream Deck")
     // ls column output separates entries with 2+ spaces for alignment
@@ -179,7 +191,7 @@ export class FileSystemLinkProvider implements ILinkProvider {
       // ls --color encodes file type in ANSI color (e.g. blue = directory),
       // so this detects clickable entries in SSH/remote sessions.
       if (!type) {
-        const colorType = this.getTokenColorType(bufferLineNumber, tokenEntries[i].startCol, tokenEntries[i].token);
+        const colorType = this.getTokenColorType(line, tokenEntries[i].startCol, tokenEntries[i].token);
         if (colorType) {
           type = colorType;
           isRemote = true;
@@ -231,11 +243,6 @@ export class FileSystemLinkProvider implements ILinkProvider {
     return links.length > 0 ? links : undefined;
   }
 
-  private getLineText(bufferLineNumber: number): string | null {
-    const line = this.terminal.buffer.active.getLine(bufferLineNumber - 1);
-    return line ? line.translateToString(true) : null;
-  }
-
   // Detect file type from the ANSI color of a token's first cell.
   // ls --color uses standard ANSI colors: blue = directory, cyan = symlink,
   // green = executable. Works for remote (SSH) sessions where local stat fails.
@@ -244,13 +251,11 @@ export class FileSystemLinkProvider implements ILinkProvider {
   //   0          = default (no color set)
   //   0x01000000 = P16  (standard ANSI 16-color palette)
   //   0x02000000 = P256 (256-color palette; indices 0-15 match ANSI)
-  private getTokenColorType(bufferLineNumber: number, startCol: number, token: string): 'file' | 'directory' | null {
+  private getTokenColorType(line: IBufferLine, startCol: number, token: string): 'file' | 'directory' | null {
     // Reject tokens that look like shell prompt segments rather than filenames:
     // contains @ (user@host), contains : (host:path), ends with $ or # (prompt chars)
     if (/[@:]|[$#]\s*$/.test(token)) return null;
 
-    const line = this.terminal.buffer.active.getLine(bufferLineNumber - 1);
-    if (!line) return null;
     const cell = line.getCell(startCol);
     if (!cell) return null;
 
@@ -334,9 +339,9 @@ export class FileSystemLinkProvider implements ILinkProvider {
       top: ${event.clientY - 28}px;
       background: #1e1e2e;
       color: #c0caf5;
-      padding: 4px 10px;
-      border-radius: 4px;
-      font-size: 12px;
+      padding: var(--space-xs) var(--space-md);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
       line-height: 1.5;
       font-family: 'SF Mono', 'Menlo', monospace;
       pointer-events: none;

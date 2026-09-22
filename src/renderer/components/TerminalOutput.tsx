@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
+import type { IDecorationOptions } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { SearchAddon } from '@xterm/addon-search';
@@ -130,8 +131,7 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
 
     // Patch registerDecoration to inject foregroundColor for search decorations
     const origRegisterDecoration = term.registerDecoration.bind(term);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    term.registerDecoration = (opts: Record<string, any>) => {
+    term.registerDecoration = (opts: IDecorationOptions) => {
       if (opts.backgroundColor === SEARCH_MATCH_BG) {
         opts = { ...opts, foregroundColor: SEARCH_MATCH_FG, layer: 'top' };
       } else if (opts.backgroundColor === SEARCH_ACTIVE_BG) {
@@ -169,17 +169,23 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
     const linkProvider = new FileSystemLinkProvider(term, ptyIdRef, cwdHistoryRef);
     const linkDisposable = term.registerLinkProvider(linkProvider);
 
-    // Handle resize
+    // Handle resize. ResizeObserver can fire many times during a drag, and
+    // fit() forces a synchronous layout, so coalesce bursts into one frame.
+    let resizeFrame = 0;
     const resizeObserver = new ResizeObserver(() => {
-      fitAddon.fit();
-      const currentPtyId = ptyIdRef.current;
-      if (currentPtyId) {
-        window.electronAPI.ptyResize(currentPtyId, term.cols, term.rows);
-      }
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => {
+        fitAddon.fit();
+        const currentPtyId = ptyIdRef.current;
+        if (currentPtyId) {
+          window.electronAPI.ptyResize(currentPtyId, term.cols, term.rows);
+        }
+      });
     });
     resizeObserver.observe(containerRef.current);
 
     return () => {
+      cancelAnimationFrame(resizeFrame);
       linkDisposable.dispose();
       linkProvider.dispose();
       resizeObserver.disconnect();

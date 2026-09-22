@@ -53,7 +53,7 @@ class PtyManager {
       // shutdown — don't notify the renderer (it would respawn the shell).
       if (!this.sessions.delete(id)) return;
       this.cwdCache.delete(id);
-      callback(exitCode, signal);
+      callback(exitCode, signal ?? 0);
     });
   }
 

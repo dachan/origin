@@ -5,6 +5,13 @@ import { JsonStore } from './store';
 
 const MAX_HISTORY = 5000;
 
+// Trim in place to the newest MAX_HISTORY entries.
+function trimToMax(commands: string[]): void {
+  if (commands.length > MAX_HISTORY) {
+    commands.splice(0, commands.length - MAX_HISTORY);
+  }
+}
+
 // zsh extended_history format: ": timestamp:0;command"
 const ZSH_EXTENDED_LINE_RE = /^: \d+:\d+;(.+)$/;
 
@@ -98,9 +105,7 @@ class CommandHistoryStore {
       }
       const merged = [...seen];
       // Trim to max size (keep the most recent)
-      if (merged.length > MAX_HISTORY) {
-        merged.splice(0, merged.length - MAX_HISTORY);
-      }
+      trimToMax(merged);
       this.cache = merged;
     }
     return [...this.cache];
@@ -130,9 +135,7 @@ class CommandHistoryStore {
     if (idx !== -1) history.splice(idx, 1);
     history.push(command);
     // Trim to max size
-    if (history.length > MAX_HISTORY) {
-      history.splice(0, history.length - MAX_HISTORY);
-    }
+    trimToMax(history);
     this.cache = history;
     await Promise.all([
       this.store.save(history),

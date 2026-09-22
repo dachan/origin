@@ -53,7 +53,7 @@ const MAX_CWD_HISTORY = 500;
 
 export const MIN_FONT_SIZE = 8;
 export const MAX_FONT_SIZE = 32;
-export const DEFAULT_FONT_SIZE = 14;
+export const DEFAULT_FONT_SIZE = 13;
 
 export function useTerminal(): TerminalContextValue {
   const ctx = useContext(TerminalContext);

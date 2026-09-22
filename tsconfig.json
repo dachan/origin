@@ -2,7 +2,8 @@
   "compilerOptions": {
     "target": "ES2021",
     "allowJs": true,
-    "module": "commonjs",
+    "module": "node16",
+    "moduleResolution": "node16",
     "lib": ["ES2021", "dom"],
     "jsx": "react-jsx",
     "skipLibCheck": true,
@@ -11,13 +12,9 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "sourceMap": true,
-    "baseUrl": ".",
     "outDir": "dist",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "paths": {
-      "*": ["node_modules/*"]
-    }
+    "rootDir": "./src",
+    "resolveJsonModule": true
   },
   "include": ["src/**/*"]
 }

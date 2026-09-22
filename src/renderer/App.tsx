@@ -13,11 +13,8 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       // Cmd+K or Cmd+Shift+P to toggle command palette
-      if (
-        (e.metaKey && e.key === 'k') ||
-        (e.metaKey && e.shiftKey && e.key === 'p') ||
-        (e.metaKey && e.shiftKey && e.key === 'P')
-      ) {
+      const key = e.key.toLowerCase();
+      if (e.metaKey && (key === 'k' || (e.shiftKey && key === 'p'))) {
         e.preventDefault();
         togglePalette();
       }

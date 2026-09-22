@@ -4,13 +4,13 @@
   flex-direction: column;
   overflow: hidden;
   background: #1a1b26;
-  gap: 16px;
+  gap: var(--space-lg);
 }
 
 .terminal-output {
   flex: 1;
   overflow: hidden;
-  padding: 4px 4px 0;
+  padding: var(--space-xs) var(--space-xs) 0;
   background: #1a1b26;
   display: flex;
   flex-direction: column;
@@ -26,8 +26,8 @@
 .terminal-search-bar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
   background: #1f2335;
   border-bottom: 1px solid #292e42;
   flex-shrink: 0;
@@ -37,11 +37,11 @@
   flex: 1;
   background: #1a1b26;
   border: 1px solid #292e42;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: #c0caf5;
   font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
-  padding: 4px 8px;
+  padding: var(--space-xs) var(--space-sm);
   outline: none;
 }
 
@@ -56,7 +56,7 @@
 .terminal-search-btn {
   background: none;
   border: 1px solid #292e42;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: #565f89;
   cursor: pointer;
   display: inline-flex;
@@ -78,7 +78,7 @@
 .command-input-container {
   position: relative;
   background: #1a1b26;
-  padding: 12px 12px 8px;
+  padding: var(--space-md) var(--space-md) var(--space-sm);
   flex-shrink: 0;
   border-top: 1px solid #292e42;
   box-sizing: border-box;
@@ -87,13 +87,13 @@
 .command-input-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-sm);
 }
 
 .prompt-indicator {
   color: #7aa2f7;
   font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 22px;
   user-select: none;
   flex-shrink: 0;
@@ -110,7 +110,7 @@
   outline: none;
   color: #c0caf5;
   font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 22px;
   resize: none;
   overflow-y: auto;
@@ -137,8 +137,8 @@
   right: 0;
   background: #24283b;
   border: 1px solid #292e42;
-  border-radius: 6px;
-  margin-bottom: 4px;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-xs);
   max-height: 300px;
   overflow-y: auto;
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
@@ -146,7 +146,7 @@
 }
 
 .autocomplete-item {
-  padding: 6px 12px;
+  padding: var(--space-sm) var(--space-md);
   cursor: pointer;
   font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
@@ -170,7 +170,7 @@
 .passthrough-toggle-btn {
   background: none;
   border: 1px solid #292e42;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: #565f89;
   cursor: pointer;
   display: inline-flex;
@@ -193,13 +193,13 @@
 .passthrough-indicator {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 12px 8px;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-md) var(--space-sm);
   background: #1a1b26;
   border-top: 1px solid #292e42;
   color: #e0af68;
   font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 22px;
   flex-shrink: 0;
@@ -212,7 +212,7 @@
 .passthrough-exit-btn {
   background: none;
   border: 1px solid #292e42;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: #565f89;
   cursor: pointer;
   display: inline-flex;
