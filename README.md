@@ -4,10 +4,6 @@
 
 A modern terminal replacement built with Electron, xterm.js, and React. Origin enhances the standard shell experience with smart command input, persistent history, pinnable commands, and clickable file/directory links.
 
-[![Origin feature demo](demo/demo.gif)](demo/output/origin-demo.mp4)
-
-[▶ Watch the full-quality demo](demo/output/origin-demo.mp4) · regenerate with `npm run demo:video`
-
 ## Features
 
 ### Terminal
@@ -17,13 +13,14 @@ A modern terminal replacement built with Electron, xterm.js, and React. Origin e
 - Adjustable font size (Cmd+=/-, persisted across sessions)
 - Tokyo Night color theme with full 16-color ANSI palette
 - Auto-restarts shell on exit
+- Blank line between command prompts after the first, so output is easier to scan
 - Window size and position remembered between sessions
 
 ### Clickable Files & Directories
 - Hover over filenames in terminal output to see them highlighted
 - Click a **directory** to `cd` into it
 - Click a **file** to open it with the OS default app
-- Hover tooltip shows file size, created date, and modified date
+- Hover tooltip shows file size, created date, and modified date, and follows the pointer
 - Supports filenames with spaces (from `ls` column output)
 - Filters out `ls -l` metadata (permissions, dates, sizes) so only real paths are clickable
 - Links from older `ls` output stay clickable after `cd`ing elsewhere (CWD history tracking)
@@ -79,6 +76,7 @@ A modern terminal replacement built with Electron, xterm.js, and React. Origin e
 | **Shift+Enter** | Insert newline |
 | **Shift+Backspace** | Delete backward to next space or `/` |
 | **Escape (2x)** | Clear terminal |
+| **Cmd+C** | Copy the input selection, or the terminal selection |
 | **Ctrl+C** | Send interrupt (SIGINT) |
 | **Ctrl+D** | Send EOF |
 | **Tab** | Accept autocomplete / shell tab-completion |
@@ -107,7 +105,7 @@ npm run make      # create platform installers
 
 ## Tech Stack
 
-- **Electron 40** — desktop shell
+- **Electron 44** — desktop shell
 - **React 19** — UI
 - **xterm.js 6** — terminal emulation (WebGL, fit, search, web-links addons)
 - **node-pty** — pseudo-terminal backend

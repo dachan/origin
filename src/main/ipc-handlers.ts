@@ -1,4 +1,4 @@
-import { ipcMain, shell } from 'electron';
+import { clipboard, ipcMain, shell } from 'electron';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -149,4 +149,10 @@ export function registerIpcHandlers(): void {
       return shell.openPath(resolved);
     }
   );
+
+  ipcMain.on('clipboard:write', (_event, text: unknown) => {
+    if (typeof text === 'string' && text.length > 0) {
+      clipboard.writeText(text);
+    }
+  });
 }

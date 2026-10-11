@@ -1,9 +1,92 @@
+import { app } from 'electron';
 import * as pty from 'node-pty';
+import fs from 'fs';
 import os from 'os';
+import path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
+
+// Startup files so each prompt after the first is preceded by a blank line.
+// ZDOTDIR points at this directory; the files source the user's real config.
+const ZSH_ENV = `export ORIGIN_USER_ZDOTDIR="\${ORIGIN_USER_ZDOTDIR:-\$HOME}"
+if [[ -r "\${ORIGIN_USER_ZDOTDIR}/.zshenv" ]]; then
+  source "\${ORIGIN_USER_ZDOTDIR}/.zshenv"
+fi
+if [[ -n "\${ORIGIN_ZDOTDIR}" ]]; then
+  export ZDOTDIR="\${ORIGIN_ZDOTDIR}"
+fi
+`;
+
+const ZSH_RC = `_origin_user_zdotdir="\${ORIGIN_USER_ZDOTDIR:-\$HOME}"
+export ZDOTDIR="\${_origin_user_zdotdir}"
+if [[ -r "\${_origin_user_zdotdir}/.zshrc" ]]; then
+  source "\${_origin_user_zdotdir}/.zshrc"
+fi
+
+# PROMPT_SP pads the current row before drawing a prompt. On startup that
+# pad wraps, so the first prompt begins one row lower and the top row is
+# empty. Skip it for that first prompt, then turn it back on so a command
+# whose output has no trailing newline still keeps its last line.
+unsetopt PROMPT_SP
+
+origin_command_gap() {
+  setopt PROMPT_SP
+  [[ -n "\${_origin_gap_ready-}" ]] && print
+  typeset -g _origin_gap_ready=1
+}
+(( \${precmd_functions[(Ie)origin_command_gap]} )) || precmd_functions+=(origin_command_gap)
+
+unset _origin_user_zdotdir ORIGIN_USER_ZDOTDIR ORIGIN_ZDOTDIR
+`;
+
+const BASH_RC = `if [[ -r "$HOME/.bashrc" ]]; then
+  source "$HOME/.bashrc"
+fi
+
+origin_command_gap() {
+  [[ -n "\${_origin_gap_ready-}" ]] && echo
+  _origin_gap_ready=1
+}
+PROMPT_COMMAND="origin_command_gap\${PROMPT_COMMAND:+;\$PROMPT_COMMAND}"
+`;
+
+function writeIfChanged(filePath: string, contents: string): void {
+  try {
+    if (fs.readFileSync(filePath, 'utf-8') === contents) return;
+  } catch {
+    // missing file
+  }
+  fs.writeFileSync(filePath, contents);
+}
+
+function shellStartup(shell: string): { args: string[]; env: NodeJS.ProcessEnv } {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  const base = path.basename(shell);
+  const dir = path.join(app.getPath('userData'), 'shell');
+
+  if (base === 'zsh' || base === 'bash') {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  if (base === 'zsh') {
+    writeIfChanged(path.join(dir, '.zshenv'), ZSH_ENV);
+    writeIfChanged(path.join(dir, '.zshrc'), ZSH_RC);
+    env.ORIGIN_USER_ZDOTDIR = env.ZDOTDIR || os.homedir();
+    env.ORIGIN_ZDOTDIR = dir;
+    env.ZDOTDIR = dir;
+    return { args: [], env };
+  }
+
+  if (base === 'bash') {
+    const rc = path.join(dir, 'bashrc');
+    writeIfChanged(rc, BASH_RC);
+    return { args: ['--rcfile', rc], env };
+  }
+
+  return { args: [], env };
+}
 
 interface PtySession {
   id: string;
@@ -21,12 +104,13 @@ class PtyManager {
       process.env.SHELL ||
       (os.platform() === 'win32' ? 'powershell.exe' : '/bin/zsh');
     const id = `pty-${++this.idCounter}`;
-    const ptyProcess = pty.spawn(shell, [], {
+    const startup = shellStartup(shell);
+    const ptyProcess = pty.spawn(shell, startup.args, {
       name: 'xterm-256color',
       cols,
       rows,
       cwd: process.env.HOME || os.homedir(),
-      env: { ...process.env } as { [key: string]: string },
+      env: startup.env as { [key: string]: string },
     });
     this.sessions.set(id, { id, process: ptyProcess });
     return { id };

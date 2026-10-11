@@ -140,7 +140,18 @@ function buildAppMenu(): void {
         { role: 'redo' },
         { type: 'separator' },
         { role: 'cut' },
-        { role: 'copy' },
+        // Not role:'copy'. That copies the DOM selection, and the command
+        // input steals focus from xterm, so a terminal selection never
+        // reaches the clipboard. The renderer copies the input selection
+        // when there is one, and the terminal selection otherwise.
+        {
+          label: 'Copy',
+          accelerator: 'CmdOrCtrl+C',
+          click: () => {
+            const win = BrowserWindow.getFocusedWindow();
+            if (win) win.webContents.send('edit:copy');
+          },
+        },
         { role: 'paste' },
         { role: 'selectAll' },
       ],

@@ -281,6 +281,11 @@ export class FileSystemLinkProvider implements ILinkProvider {
 
   private tooltipEl: HTMLElement | null = null;
   private tooltipRequestId = 0;
+  private tooltipX = 0;
+  private tooltipY = 0;
+  // xterm's link hover fires once, on enter. Track the pointer ourselves
+  // so the card stays offset while the cursor moves across the link.
+  private tooltipMoveHandler: ((event: MouseEvent) => void) | null = null;
 
   private formatSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
@@ -324,6 +329,7 @@ export class FileSystemLinkProvider implements ILinkProvider {
           return div;
         })
       );
+      this.placeTooltip(this.tooltipEl);
     }).catch(() => { /* best-effort */ });
   }
 
@@ -335,8 +341,6 @@ export class FileSystemLinkProvider implements ILinkProvider {
     el.textContent = text;
     el.style.cssText = `
       position: fixed;
-      left: ${event.clientX + 8}px;
-      top: ${event.clientY - 28}px;
       background: #1e1e2e;
       color: #c0caf5;
       padding: var(--space-xs) var(--space-md);
@@ -351,10 +355,43 @@ export class FileSystemLinkProvider implements ILinkProvider {
     `;
     document.body.appendChild(el);
     this.tooltipEl = el;
+    this.followTooltip(event);
+    this.tooltipMoveHandler = (moveEvent) => this.followTooltip(moveEvent);
+    document.addEventListener('mousemove', this.tooltipMoveHandler);
+  }
+
+  private followTooltip(event: MouseEvent): void {
+    this.tooltipX = event.clientX;
+    this.tooltipY = event.clientY;
+    if (this.tooltipEl) this.placeTooltip(this.tooltipEl);
+  }
+
+  // Keep the card off the pointer. The arrow extends down-right from the
+  // hotspot, so the gap has to clear that, not just the hotspot. Flips
+  // above or left when that would run off the window.
+  private placeTooltip(el: HTMLElement): void {
+    const offsetX = 20;
+    const offsetY = 28;
+    const margin = 8;
+    const { width, height } = el.getBoundingClientRect();
+    let left = this.tooltipX + offsetX;
+    let top = this.tooltipY + offsetY;
+    if (left + width > window.innerWidth - margin) {
+      left = this.tooltipX - offsetX - width;
+    }
+    if (top + height > window.innerHeight - margin) {
+      top = this.tooltipY - offsetY - height;
+    }
+    el.style.left = `${Math.max(margin, left)}px`;
+    el.style.top = `${Math.max(margin, top)}px`;
   }
 
   private hideTooltip(): void {
     this.tooltipRequestId++;
+    if (this.tooltipMoveHandler) {
+      document.removeEventListener('mousemove', this.tooltipMoveHandler);
+      this.tooltipMoveHandler = null;
+    }
     if (this.tooltipEl) {
       this.tooltipEl.remove();
       this.tooltipEl = null;

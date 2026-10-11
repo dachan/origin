@@ -69,6 +69,15 @@ const api = {
   // Menu events
   onTogglePassthrough: (callback: () => void): (() => void) =>
     subscribe('terminal:toggle-passthrough', callback),
+
+  onEditCopy: (callback: () => void): (() => void) =>
+    subscribe('edit:copy', callback),
+
+  // The Edit menu triggers copy without a renderer user-gesture, so the
+  // clipboard is written from the main process.
+  clipboardWrite: (text: string): void => {
+    ipcRenderer.send('clipboard:write', text);
+  },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);
