@@ -1,9 +1,9 @@
 {
   "name": "origin",
   "productName": "Origin",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Origin",
-  "main": ".webpack/main",
+  "main": ".webpack/main/index.cjs",
   "private": true,
   "scripts": {
     "start": "electron-forge start",

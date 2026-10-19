@@ -39,15 +39,10 @@ const config: ForgeConfig = {
     icon: './assets/icon',
     afterCopy: [
       // Copy node-pty into the packaged app's node_modules
-      (buildPath, _electronVersion, _platform, _arch, callback) => {
+      ({ buildPath }) => {
         const srcNodePty = path.resolve(__dirname, 'node_modules', 'node-pty');
         const destNodePty = path.join(buildPath, 'node_modules', 'node-pty');
-        try {
-          copyDirSync(srcNodePty, destNodePty);
-          callback();
-        } catch (err) {
-          callback(err as Error);
-        }
+        copyDirSync(srcNodePty, destNodePty);
       },
     ],
   },
