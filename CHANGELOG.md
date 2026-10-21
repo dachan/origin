@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.8
+
+- Fill password prompts from 1Password. At a prompt ending in `password:` or `passphrase:`, Origin fills the 1Password item remembered for that prompt after Touch ID and shows a toast naming it; typing, Escape, or Ctrl+C cancels it. With nothing remembered, the masked input shows as before, and Cmd+\ (or the key button) opens a picker to choose a Login, Password, or Server item, which Origin then remembers. Items are remembered per prompt and user@host, so the same sudo prompt on different servers can use different items. Origin won't fill the same prompt again within 30 seconds, so a rejected password isn't retried. The main process reads the password with the 1Password CLI and types it straight into the shell; it never reaches the window or history.
+
 ## 0.1.7
 
 - Start zsh as a login shell and load the user's `~/.zprofile`, so tools on Homebrew's PATH (such as the 1Password CLI `op`) are found when Origin is opened from the Dock or Finder.

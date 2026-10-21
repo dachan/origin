@@ -30,3 +30,24 @@ export interface FileStatSummary {
   created: string;
   modified: string;
 }
+
+export interface OnePasswordItem {
+  id: string;
+  title: string;
+  // Usually the username.
+  subtitle: string;
+  vaultId: string;
+  vault: string;
+  accountId: string;
+  account: string;
+}
+
+export interface OnePasswordItemList {
+  items: OnePasswordItem[];
+  // The item last used for the same prompt, if it still exists.
+  rememberedId: string | null;
+}
+
+export type OnePasswordResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: string };

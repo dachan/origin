@@ -5,6 +5,9 @@ import type {
   PtyExitPayload,
   ResolvedToken,
   FileStatSummary,
+  OnePasswordItem,
+  OnePasswordItemList,
+  OnePasswordResult,
 } from '../shared/types';
 
 // Subscribe to an IPC channel; returns an unsubscribe function.
@@ -65,6 +68,24 @@ const api = {
 
   fsOpenFile: (filePath: string): Promise<string> =>
     ipcRenderer.invoke('fs:openFile', filePath),
+
+  // 1Password
+  opListItems: (promptKey: string): Promise<OnePasswordResult<OnePasswordItemList>> =>
+    ipcRenderer.invoke('op:listItems', promptKey),
+
+  opFill: (
+    ptyId: string,
+    item: OnePasswordItem,
+    promptKey: string
+  ): Promise<OnePasswordResult<null>> =>
+    ipcRenderer.invoke('op:fill', { ptyId, item, promptKey }),
+
+  opAutoFill: (ptyId: string, promptKey: string): Promise<OnePasswordResult<string | null>> =>
+    ipcRenderer.invoke('op:autoFill', { ptyId, promptKey }),
+
+  opCancelAutoFill: (ptyId: string): void => {
+    ipcRenderer.send('op:cancelAutoFill', ptyId);
+  },
 
   // Menu events
   onTogglePassthrough: (callback: () => void): (() => void) =>

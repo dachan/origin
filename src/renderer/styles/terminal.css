@@ -166,6 +166,27 @@
   background: #292e42;
 }
 
+/* 1Password item picker -- shares the autocomplete dropdown's position */
+.op-picker {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.op-picker-search {
+  flex-shrink: 0;
+  border-bottom: 1px solid #292e42;
+}
+
+.op-picker-list {
+  overflow-y: auto;
+  padding: var(--space-xs) 0;
+}
+
+.op-picker-error {
+  color: #f7768e;
+}
+
 /* Passthrough toggle button in command input */
 .passthrough-toggle-btn {
   background: none;

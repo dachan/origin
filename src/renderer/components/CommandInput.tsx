@@ -1,9 +1,11 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useTerminal, KILL_LINE } from '../context/TerminalContext';
 import Autocomplete from './Autocomplete';
+import OnePasswordPicker from './OnePasswordPicker';
 import Prompt from './Prompt';
 import { showToast } from './Toast';
-import { CommandLineIcon } from './icons';
+import { CommandLineIcon, KeyIcon } from './icons';
+import { useOnePasswordFill } from '../hooks/useOnePasswordFill';
 
 const CommandInput: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -17,6 +19,7 @@ const CommandInput: React.FC = () => {
 
   const {
     ptyId,
+    terminalRef,
     history,
     historyIndex,
     setHistoryIndex,
@@ -235,9 +238,30 @@ const CommandInput: React.FC = () => {
     [filterHistory, setHistoryIndex]
   );
 
+  const handleOnePasswordFilled = useCallback(() => {
+    setPasswordValue('');
+    setIsPasswordMode(false);
+  }, [setIsPasswordMode]);
+
+  const onePassword = useOnePasswordFill({
+    ptyId,
+    terminalRef,
+    isPasswordMode,
+    onFilled: handleOnePasswordFilled,
+  });
+
+  const closeOnePasswordPicker = useCallback(() => {
+    onePassword.closePicker();
+    passwordInputRef.current?.focus();
+  }, [onePassword]);
+
   const handlePasswordKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') {
+      // Cmd+\ is 1Password's own fill shortcut.
+      if (e.key === '\\' && e.metaKey) {
+        e.preventDefault();
+        onePassword.openPicker();
+      } else if (e.key === 'Enter') {
         e.preventDefault();
         if (ptyId) {
           window.electronAPI.ptyWrite(ptyId, passwordValue + '\n');
@@ -258,7 +282,7 @@ const CommandInput: React.FC = () => {
         setIsPasswordMode(false);
       }
     },
-    [ptyId, passwordValue, setIsPasswordMode]
+    [ptyId, passwordValue, setIsPasswordMode, onePassword]
   );
 
   // Auto-focus password input when entering password mode
@@ -320,20 +344,45 @@ const CommandInput: React.FC = () => {
           }}
         />
       )}
+      {isPasswordMode && ptyId && onePassword.pickerKey !== null && (
+        <OnePasswordPicker
+          ptyId={ptyId}
+          promptKey={onePassword.pickerKey}
+          onFilled={onePassword.onPickerFilled}
+          onClose={closeOnePasswordPicker}
+        />
+      )}
       <div className="command-input-row">
         <Prompt />
         {isPasswordMode ? (
-          <input
-            ref={passwordInputRef}
-            type="password"
-            className="command-textarea"
-            value={passwordValue}
-            onChange={(e) => setPasswordValue(e.target.value)}
-            onKeyDown={handlePasswordKeyDown}
-            placeholder="Enter password..."
-            autoComplete="current-password"
-            spellCheck={false}
-          />
+          <>
+            <input
+              ref={passwordInputRef}
+              type="password"
+              className="command-textarea"
+              value={passwordValue}
+              onChange={(e) => {
+                // Typing means the user is entering it themselves.
+                onePassword.cancelAutoFill();
+                setPasswordValue(e.target.value);
+              }}
+              onKeyDown={handlePasswordKeyDown}
+              placeholder={
+                onePassword.isAutoFilling
+                  ? 'Waiting for 1Password… (or type the password)'
+                  : 'Enter password, or ⌘\\ to fill from 1Password...'
+              }
+              autoComplete="current-password"
+              spellCheck={false}
+            />
+            <button
+              className="passthrough-toggle-btn"
+              onClick={onePassword.openPicker}
+              title="Fill from 1Password (Cmd+\)"
+            >
+              <KeyIcon />
+            </button>
+          </>
         ) : (
           <textarea
             ref={textareaRef}

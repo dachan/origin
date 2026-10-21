@@ -5,11 +5,18 @@ import path from 'path';
 import { ptyManager } from './pty-manager';
 import { commandHistoryStore } from './persistence/command-history';
 import { stickyCommandsStore } from './persistence/sticky-commands';
+import { onePassword } from './one-password';
 import type {
   StickyCommand,
   ResolvedToken,
   FileStatSummary,
+  OnePasswordItem,
+  OnePasswordItemList,
+  OnePasswordResult,
 } from '../shared/types';
+
+// In-flight 1Password auto-fills, by PTY.
+const pendingAutoFills = new Map<string, AbortController>();
 
 export function registerIpcHandlers(): void {
   // --- PTY Channels ---
@@ -149,6 +156,58 @@ export function registerIpcHandlers(): void {
       return shell.openPath(resolved);
     }
   );
+
+  // --- 1Password Channels ---
+  // Passwords go from `op` straight to the PTY. The renderer only learns
+  // whether it worked and which item was used.
+
+  ipcMain.handle(
+    'op:listItems',
+    async (_event, promptKey: string): Promise<OnePasswordResult<OnePasswordItemList>> =>
+      onePassword.listItems(promptKey)
+  );
+
+  ipcMain.handle(
+    'op:fill',
+    async (
+      _event,
+      { ptyId, item, promptKey }: { ptyId: string; item: OnePasswordItem; promptKey: string }
+    ): Promise<OnePasswordResult<null>> => {
+      const result = await onePassword.readPassword(item, promptKey);
+      if (!result.ok) return result;
+      ptyManager.write(ptyId, result.value + '\n');
+      return { ok: true, value: null };
+    }
+  );
+
+  // Fills the item remembered for this prompt, if any. Resolves to its title,
+  // or null when nothing is remembered or the renderer cancelled.
+  ipcMain.handle(
+    'op:autoFill',
+    async (
+      _event,
+      { ptyId, promptKey }: { ptyId: string; promptKey: string }
+    ): Promise<OnePasswordResult<string | null>> => {
+      const item = await onePassword.rememberedFor(promptKey);
+      if (!item) return { ok: true, value: null };
+
+      pendingAutoFills.get(ptyId)?.abort();
+      const controller = new AbortController();
+      pendingAutoFills.set(ptyId, controller);
+      const result = await onePassword.readPassword(item, promptKey, controller.signal);
+      if (pendingAutoFills.get(ptyId) === controller) pendingAutoFills.delete(ptyId);
+
+      if (controller.signal.aborted) return { ok: true, value: null };
+      if (!result.ok) return result;
+      ptyManager.write(ptyId, result.value + '\n');
+      return { ok: true, value: item.title };
+    }
+  );
+
+  // The user started typing the password themselves, or left the prompt.
+  ipcMain.on('op:cancelAutoFill', (_event, ptyId: string) => {
+    pendingAutoFills.get(ptyId)?.abort();
+  });
 
   ipcMain.on('clipboard:write', (_event, text: unknown) => {
     if (typeof text === 'string' && text.length > 0) {

@@ -32,6 +32,7 @@ A modern terminal replacement built with Electron, xterm.js, and React. Origin e
 - Persistent command history across sessions
 - Syncs with shell history (`~/.zsh_history` / `~/.bash_history`)
 - **Password masking** — automatically detects password prompts (`sudo`, `ssh`, `git`, etc.) and switches to a masked input field; passwords are never saved to history
+- **Fill from 1Password** — at a password prompt Origin fills the 1Password item you used last time for that prompt and server, after Touch ID. If there isn't one yet, the masked input shows as usual: press **Cmd+\\** (or the key button) to pick an item once, and Origin remembers it. Start typing to enter a password yourself instead. Works for remote prompts over SSH too. Needs the [1Password CLI](https://developer.1password.com/docs/cli/get-started/) (`brew install 1password-cli`) with "Integrate with 1Password CLI" turned on in 1Password.
 
 ### Terminal Search
 - **Cmd+F** to open Find bar
