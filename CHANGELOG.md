@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.7
+
+- Start zsh as a login shell and load the user's `~/.zprofile`, so tools on Homebrew's PATH (such as the 1Password CLI `op`) are found when Origin is opened from the Dock or Finder.
+
 ## 0.1.6
 
 - Point the package `main` entry at `.webpack/main/index.cjs`, which Electron Forge 8's webpack plugin requires. Without it `npm start` fails to launch.

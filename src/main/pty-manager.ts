@@ -19,6 +19,13 @@ if [[ -n "\${ORIGIN_ZDOTDIR}" ]]; then
 fi
 `;
 
+// Login shells read .zprofile while ZDOTDIR still points here, so forward it
+// to the user's file (Homebrew's `brew shellenv` usually lives there).
+const ZSH_PROFILE = `if [[ -r "\${ORIGIN_USER_ZDOTDIR}/.zprofile" ]]; then
+  source "\${ORIGIN_USER_ZDOTDIR}/.zprofile"
+fi
+`;
+
 const ZSH_RC = `_origin_user_zdotdir="\${ORIGIN_USER_ZDOTDIR:-\$HOME}"
 export ZDOTDIR="\${_origin_user_zdotdir}"
 if [[ -r "\${_origin_user_zdotdir}/.zshrc" ]]; then
@@ -72,11 +79,14 @@ function shellStartup(shell: string): { args: string[]; env: NodeJS.ProcessEnv }
 
   if (base === 'zsh') {
     writeIfChanged(path.join(dir, '.zshenv'), ZSH_ENV);
+    writeIfChanged(path.join(dir, '.zprofile'), ZSH_PROFILE);
     writeIfChanged(path.join(dir, '.zshrc'), ZSH_RC);
     env.ORIGIN_USER_ZDOTDIR = env.ZDOTDIR || os.homedir();
     env.ORIGIN_ZDOTDIR = dir;
     env.ZDOTDIR = dir;
-    return { args: [], env };
+    // Run as a login shell, like Terminal and iTerm, so /etc/zprofile
+    // (path_helper) and ~/.zprofile set PATH when Origin starts from the Dock.
+    return { args: ['-l'], env };
   }
 
   if (base === 'bash') {
