@@ -10,6 +10,8 @@ import type {
   StickyCommand,
   ResolvedToken,
   FileStatSummary,
+  OnePasswordField,
+  OnePasswordFill,
   OnePasswordItem,
   OnePasswordItemList,
   OnePasswordResult,
@@ -17,6 +19,11 @@ import type {
 
 // In-flight 1Password auto-fills, by PTY.
 const pendingAutoFills = new Map<string, AbortController>();
+
+// "Server › root" names which of an item's passwords was filled.
+function fillTitle({ item, field }: OnePasswordFill): string {
+  return field.label === 'password' ? item.title : `${item.title} › ${field.label}`;
+}
 
 export function registerIpcHandlers(): void {
   // --- PTY Channels ---
@@ -168,12 +175,18 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
+    'op:listFields',
+    async (_event, item: OnePasswordItem): Promise<OnePasswordResult<OnePasswordField[]>> =>
+      onePassword.listFields(item)
+  );
+
+  ipcMain.handle(
     'op:fill',
     async (
       _event,
-      { ptyId, item, promptKey }: { ptyId: string; item: OnePasswordItem; promptKey: string }
+      { ptyId, fill, promptKey }: { ptyId: string; fill: OnePasswordFill; promptKey: string }
     ): Promise<OnePasswordResult<null>> => {
-      const result = await onePassword.readPassword(item, promptKey);
+      const result = await onePassword.readPassword(fill, promptKey);
       if (!result.ok) return result;
       ptyManager.write(ptyId, result.value + '\n');
       return { ok: true, value: null };
@@ -188,19 +201,19 @@ export function registerIpcHandlers(): void {
       _event,
       { ptyId, promptKey }: { ptyId: string; promptKey: string }
     ): Promise<OnePasswordResult<string | null>> => {
-      const item = await onePassword.rememberedFor(promptKey);
-      if (!item) return { ok: true, value: null };
+      const fill = await onePassword.rememberedFor(promptKey);
+      if (!fill) return { ok: true, value: null };
 
       pendingAutoFills.get(ptyId)?.abort();
       const controller = new AbortController();
       pendingAutoFills.set(ptyId, controller);
-      const result = await onePassword.readPassword(item, promptKey, controller.signal);
+      const result = await onePassword.readPassword(fill, promptKey, controller.signal);
       if (pendingAutoFills.get(ptyId) === controller) pendingAutoFills.delete(ptyId);
 
       if (controller.signal.aborted) return { ok: true, value: null };
       if (!result.ok) return result;
       ptyManager.write(ptyId, result.value + '\n');
-      return { ok: true, value: item.title };
+      return { ok: true, value: fillTitle(fill) };
     }
   );
 

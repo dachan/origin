@@ -5,6 +5,8 @@ import type {
   PtyExitPayload,
   ResolvedToken,
   FileStatSummary,
+  OnePasswordField,
+  OnePasswordFill,
   OnePasswordItem,
   OnePasswordItemList,
   OnePasswordResult,
@@ -73,12 +75,15 @@ const api = {
   opListItems: (promptKey: string): Promise<OnePasswordResult<OnePasswordItemList>> =>
     ipcRenderer.invoke('op:listItems', promptKey),
 
+  opListFields: (item: OnePasswordItem): Promise<OnePasswordResult<OnePasswordField[]>> =>
+    ipcRenderer.invoke('op:listFields', item),
+
   opFill: (
     ptyId: string,
-    item: OnePasswordItem,
+    fill: OnePasswordFill,
     promptKey: string
   ): Promise<OnePasswordResult<null>> =>
-    ipcRenderer.invoke('op:fill', { ptyId, item, promptKey }),
+    ipcRenderer.invoke('op:fill', { ptyId, fill, promptKey }),
 
   opAutoFill: (ptyId: string, promptKey: string): Promise<OnePasswordResult<string | null>> =>
     ipcRenderer.invoke('op:autoFill', { ptyId, promptKey }),

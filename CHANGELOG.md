@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.9
+
+- Fill the right password from 1Password items that hold several. Origin used to always read an item's main `password` field, so an item like a server's account login with separate root and user passwords filled the wrong one. After you pick an item with more than one password field, Origin asks which, preselecting the field labelled with the prompt's user (`[sudo] password for david:` → `david`), and remembers the item and field.
+- Open the 1Password picker on its own at a password prompt with nothing remembered, instead of waiting for Cmd+\. Escape closes it to type the password yourself.
+- Remember one-off `ssh host "sudo …"` prompts per ssh host. They used to be keyed by the local shell prompt's user@host, so every server reached from the same Mac shared one remembered item.
+
 ## 0.1.8
 
 - Fill password prompts from 1Password. At a prompt ending in `password:` or `passphrase:`, Origin fills the 1Password item remembered for that prompt after Touch ID and shows a toast naming it; typing, Escape, or Ctrl+C cancels it. With nothing remembered, the masked input shows as before, and Cmd+\ (or the key button) opens a picker to choose a Login, Password, or Server item, which Origin then remembers. Items are remembered per prompt and user@host, so the same sudo prompt on different servers can use different items. Origin won't fill the same prompt again within 30 seconds, so a rejected password isn't retried. The main process reads the password with the 1Password CLI and types it straight into the shell; it never reaches the window or history.

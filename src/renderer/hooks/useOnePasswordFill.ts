@@ -1,36 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { Terminal } from '@xterm/xterm';
 import { showToast } from '../components/Toast';
+import { readPrompt } from '../password-prompt';
 
 // Stricter than the detector in TerminalContext: the prompt must end the
 // cursor line, so output that merely mentions a password doesn't call
 // 1Password.
 const CURSOR_PROMPT_RE = /(password|passphrase)[^:]*:$/i;
-const USER_HOST_RE = /[\w.-]+@[\w.-]+/;
-// How far above the prompt to look for the shell prompt's user@host.
-const HOST_LOOKBACK_LINES = 5;
 // A second prompt this soon after filling the same one means the password
 // was probably rejected ("Sorry, try again"); don't burn another attempt.
 const RETRY_WINDOW_MS = 30_000;
-
-// "[sudo] password for david:" reads the same on every server, so the key
-// for remembering an item adds the nearest user@host, usually from the shell
-// prompt above. SSH prompts ("david@host's password:") name it themselves.
-function readPrompt(term: Terminal | null): { prompt: string; key: string } {
-  const buffer = term?.buffer.active;
-  if (!buffer) return { prompt: '', key: '' };
-  const cursorRow = buffer.baseY + buffer.cursorY;
-  const text = (row: number) =>
-    buffer.getLine(row)?.translateToString(true).trim() ?? '';
-
-  const prompt = text(cursorRow);
-  if (USER_HOST_RE.test(prompt)) return { prompt, key: prompt };
-  for (let row = cursorRow - 1; row >= Math.max(0, cursorRow - HOST_LOOKBACK_LINES); row--) {
-    const userHost = text(row).match(USER_HOST_RE)?.[0];
-    if (userHost) return { prompt, key: `${userHost} ${prompt}` };
-  }
-  return { prompt, key: prompt };
-}
 
 interface Options {
   ptyId: string | null;
@@ -40,8 +19,8 @@ interface Options {
 }
 
 // At a password prompt, fills the 1Password item remembered for it (after
-// Touch ID). With nothing remembered, the masked input stays and the picker
-// opens on request to choose an item.
+// Touch ID). With nothing remembered, the picker opens to choose one; Escape
+// closes it and leaves the masked input for typing the password.
 export function useOnePasswordFill({ ptyId, terminalRef, isPasswordMode, onFilled }: Options) {
   const [pickerKey, setPickerKey] = useState<string | null>(null);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
@@ -84,6 +63,8 @@ export function useOnePasswordFill({ ptyId, terminalRef, isPasswordMode, onFille
           lastFillRef.current = { key, at: Date.now() };
           showToast(`Filled from 1Password: ${result.value}`);
           onFilled();
+        } else {
+          setPickerKey(key);
         }
       });
     }, 50);

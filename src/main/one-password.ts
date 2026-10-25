@@ -4,6 +4,8 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { JsonStore } from './persistence/store';
 import type {
+  OnePasswordField,
+  OnePasswordFill,
   OnePasswordItem,
   OnePasswordItemList,
   OnePasswordResult,
@@ -32,9 +34,16 @@ interface OpItem {
   vault: { id: string; name: string };
 }
 
-// Maps a password prompt (with its user@host) to the item last used for it.
-// Holds item metadata only, never secrets.
-type Remembered = Record<string, OnePasswordItem>;
+interface OpField {
+  id: string;
+  type: string;
+  label?: string;
+  section?: { label?: string };
+}
+
+// Maps a password prompt (with its user@host or ssh target) to the item and
+// field last used for it. Holds metadata only, never secrets.
+type Remembered = Record<string, OnePasswordFill>;
 const rememberedStore = new JsonStore<Remembered>('one-password-fills.json', {});
 
 function findOp(): string | null {
@@ -118,39 +127,64 @@ async function listItems(promptKey: string): Promise<OnePasswordItemList> {
   items.sort((a, b) => a.title.localeCompare(b.title));
 
   const remembered = await rememberedFor(promptKey);
-  const rememberedItem = remembered
-    ? items.find((i) => i.id === remembered.id && i.accountId === remembered.accountId)
-    : undefined;
-  return { items, rememberedId: rememberedItem?.id ?? null };
+  const stillExists =
+    remembered !== null &&
+    items.some((i) => i.id === remembered.item.id && i.accountId === remembered.item.accountId);
+  return {
+    items,
+    rememberedId: stillExists ? remembered.item.id : null,
+    rememberedFieldId: stillExists ? remembered.field.id : null,
+  };
 }
 
-async function rememberedFor(promptKey: string): Promise<OnePasswordItem | null> {
-  const item = (await rememberedStore.load())[promptKey];
-  // Entries saved before vaultId was stored can't be read; pick them again.
-  return item?.vaultId ? item : null;
+// The item's concealed fields, without their values. op's JSON includes the
+// values, so this output must stay in the main process.
+async function listFields(item: OnePasswordItem): Promise<OnePasswordField[]> {
+  const stdout = await runOp([
+    'item', 'get', item.id,
+    '--vault', item.vaultId,
+    '--account', item.accountId,
+    '--format', 'json',
+  ]);
+  const { fields = [] } = JSON.parse(stdout) as { fields?: OpField[] };
+  return fields
+    .filter((field) => field.type === 'CONCEALED')
+    .map((field) => ({
+      id: field.id,
+      label: field.label ?? field.id,
+      section: field.section?.label ?? '',
+    }));
 }
 
-// Reads the item's password and returns it. Callers must write it straight
-// to the PTY; it must never reach the renderer or history.
+async function rememberedFor(promptKey: string): Promise<OnePasswordFill | null> {
+  const fill = (await rememberedStore.load())[promptKey];
+  // Entries saved before fields were stored only name an item; pick them again.
+  return fill?.field ? fill : null;
+}
+
+// Reads the field and returns it. Callers must write it straight to the PTY;
+// it must never reach the renderer or history.
 async function readPassword(
-  item: OnePasswordItem,
+  fill: OnePasswordFill,
   promptKey: string,
   signal?: AbortSignal
 ): Promise<string> {
+  const { item, field } = fill;
   const secret = await runOp([
     'read', '--no-newline',
     '--account', item.accountId,
-    `op://${item.vaultId}/${item.id}/password`,
+    `op://${item.vaultId}/${item.id}/${field.id}`,
   ], signal);
   const remembered = await rememberedStore.load();
-  remembered[promptKey] = item;
+  remembered[promptKey] = fill;
   await rememberedStore.save(remembered);
   return secret;
 }
 
 export const onePassword = {
   listItems: (promptKey: string) => toResult(listItems(promptKey)),
+  listFields: (item: OnePasswordItem) => toResult(listFields(item)),
   rememberedFor,
-  readPassword: (item: OnePasswordItem, promptKey: string, signal?: AbortSignal) =>
-    toResult(readPassword(item, promptKey, signal)),
+  readPassword: (fill: OnePasswordFill, promptKey: string, signal?: AbortSignal) =>
+    toResult(readPassword(fill, promptKey, signal)),
 };

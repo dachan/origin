@@ -42,10 +42,25 @@ export interface OnePasswordItem {
   account: string;
 }
 
+// A concealed field of an item. One item can hold several passwords, such as
+// a server's root and user passwords in separate sections.
+export interface OnePasswordField {
+  id: string;
+  label: string;
+  section: string;
+}
+
+// What fills a prompt: an item and which of its fields to read.
+export interface OnePasswordFill {
+  item: OnePasswordItem;
+  field: OnePasswordField;
+}
+
 export interface OnePasswordItemList {
   items: OnePasswordItem[];
-  // The item last used for the same prompt, if it still exists.
+  // The item and field last used for the same prompt, if the item still exists.
   rememberedId: string | null;
+  rememberedFieldId: string | null;
 }
 
 export type OnePasswordResult<T> =
