@@ -14,17 +14,33 @@ const RETRY_WINDOW_MS = 30_000;
 interface Options {
   ptyId: string | null;
   terminalRef: React.MutableRefObject<Terminal | null>;
+  lastCommandRef: React.MutableRefObject<string | null>;
   isPasswordMode: boolean;
   onFilled: () => void;
 }
 
-// At a password prompt, fills the 1Password item remembered for it (after
-// Touch ID). With nothing remembered, the picker opens to choose one; Escape
-// closes it and leaves the masked input for typing the password.
-export function useOnePasswordFill({ ptyId, terminalRef, isPasswordMode, onFilled }: Options) {
+// A remembered item offered for the current prompt, filled only on Enter.
+interface Offer {
+  key: string;
+  title: string;
+}
+
+// At a password prompt, offers the 1Password item remembered for it; Enter
+// fills it (after Touch ID). Any program can print text that looks like a
+// password prompt, so nothing is filled without that keypress. With nothing
+// remembered, the picker opens to choose one; Escape closes it and leaves the
+// masked input for typing the password.
+export function useOnePasswordFill({
+  ptyId,
+  terminalRef,
+  lastCommandRef,
+  isPasswordMode,
+  onFilled,
+}: Options) {
   const [pickerKey, setPickerKey] = useState<string | null>(null);
+  const [offer, setOffer] = useState<Offer | null>(null);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
-  // Bumped to drop the result of an auto-fill that was cancelled.
+  // Bumped to drop the result of a lookup or fill that was cancelled.
   const autoFillIdRef = useRef(0);
   const pendingRef = useRef(false);
   const lastFillRef = useRef<{ key: string; at: number } | null>(null);
@@ -40,41 +56,51 @@ export function useOnePasswordFill({ ptyId, terminalRef, isPasswordMode, onFille
   useEffect(() => {
     if (!isPasswordMode || !ptyId) {
       setPickerKey(null);
+      setOffer(null);
       cancelAutoFill();
       return;
     }
     // Wait for xterm to draw the prompt line before reading it.
     const timer = setTimeout(() => {
-      const { prompt, key } = readPrompt(terminalRef.current);
+      const { prompt, key } = readPrompt(terminalRef.current, lastCommandRef.current);
       if (!CURSOR_PROMPT_RE.test(prompt)) return;
       const last = lastFillRef.current;
       if (last && last.key === key && Date.now() - last.at < RETRY_WINDOW_MS) return;
 
       const id = ++autoFillIdRef.current;
-      pendingRef.current = true;
-      setIsAutoFilling(true);
-      window.electronAPI.opAutoFill(ptyId, key).then((result) => {
+      window.electronAPI.opRememberedTitle(key).then((title) => {
         if (id !== autoFillIdRef.current) return;
-        pendingRef.current = false;
-        setIsAutoFilling(false);
-        if (!result.ok) {
-          showToast(result.error);
-        } else if (result.value) {
-          lastFillRef.current = { key, at: Date.now() };
-          showToast(`Filled from 1Password: ${result.value}`);
-          onFilled();
-        } else {
-          setPickerKey(key);
-        }
+        if (title) setOffer({ key, title });
+        else setPickerKey(key);
       });
     }, 50);
     return () => clearTimeout(timer);
-  }, [isPasswordMode, ptyId, terminalRef, cancelAutoFill, onFilled]);
+  }, [isPasswordMode, ptyId, terminalRef, lastCommandRef, cancelAutoFill]);
+
+  const acceptOffer = useCallback(() => {
+    if (!offer || !ptyId || pendingRef.current) return;
+    const { key } = offer;
+    const id = ++autoFillIdRef.current;
+    pendingRef.current = true;
+    setIsAutoFilling(true);
+    window.electronAPI.opAutoFill(ptyId, key).then((result) => {
+      if (id !== autoFillIdRef.current) return;
+      pendingRef.current = false;
+      setIsAutoFilling(false);
+      if (!result.ok) {
+        showToast(result.error);
+      } else if (result.value) {
+        lastFillRef.current = { key, at: Date.now() };
+        showToast(`Filled from 1Password: ${result.value}`);
+        onFilled();
+      }
+    });
+  }, [offer, ptyId, onFilled]);
 
   const openPicker = useCallback(() => {
     cancelAutoFill();
-    setPickerKey(readPrompt(terminalRef.current).key);
-  }, [cancelAutoFill, terminalRef]);
+    setPickerKey(readPrompt(terminalRef.current, lastCommandRef.current).key);
+  }, [cancelAutoFill, terminalRef, lastCommandRef]);
 
   const closePicker = useCallback(() => setPickerKey(null), []);
 
@@ -83,5 +109,14 @@ export function useOnePasswordFill({ ptyId, terminalRef, isPasswordMode, onFille
     onFilled();
   }, [pickerKey, onFilled]);
 
-  return { pickerKey, isAutoFilling, openPicker, closePicker, onPickerFilled, cancelAutoFill };
+  return {
+    pickerKey,
+    offer,
+    isAutoFilling,
+    acceptOffer,
+    openPicker,
+    closePicker,
+    onPickerFilled,
+    cancelAutoFill,
+  };
 }

@@ -1,7 +1,8 @@
-import { app, BrowserWindow, Menu, dialog } from 'electron';
+import { app, BrowserWindow, Menu, dialog, shell } from 'electron';
 import electronSquirrelStartup from 'electron-squirrel-startup';
 import fs from 'fs';
 import path from 'path';
+import { isAppUrl } from './app-url';
 import { registerIpcHandlers } from './ipc-handlers';
 import { ptyManager } from './pty-manager';
 
@@ -12,6 +13,17 @@ declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (electronSquirrelStartup) {
   app.quit();
+}
+
+// A debugging port would let any local process drive the shell and the
+// 1Password fills of an Origin already approved in 1Password. The fuses
+// cover Node's inspector but not Chromium's switches.
+if (
+  app.isPackaged &&
+  (app.commandLine.hasSwitch('remote-debugging-port') ||
+    app.commandLine.hasSwitch('remote-debugging-pipe'))
+) {
+  app.exit(1);
 }
 
 // --- Window state persistence ---
@@ -70,8 +82,21 @@ const createWindow = (): void => {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
+  });
+
+  // The preload gives whatever page is loaded control of the shell and of
+  // 1Password fills, so the window may only ever show the app itself. A file
+  // dropped on the window would otherwise navigate to it.
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!isAppUrl(url)) event.preventDefault();
+  });
+  // Links clicked in terminal output open in the default browser, never in
+  // an app window.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
   });
 
   if (state.isMaximized) {
@@ -174,10 +199,11 @@ function buildAppMenu(): void {
       // No zoom roles here: the renderer implements font-size zoom on
       // Cmd+=/-/0, and the menu accelerators would intercept those keys
       // and apply page zoom instead.
+      // DevTools can run code with the preload's access, so only in development.
       submenu: [
         { role: 'reload' },
         { role: 'forceReload' },
-        { role: 'toggleDevTools' },
+        ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' } as const]),
         { type: 'separator' },
         { role: 'togglefullscreen' },
       ],

@@ -1,4 +1,4 @@
-import type { IBuffer, Terminal } from '@xterm/xterm';
+import type { Terminal } from '@xterm/xterm';
 
 const USER_HOST_RE = /[\w.-]+@[\w.-]+/;
 // How many lines above the prompt to look for the shell prompt's user@host.
@@ -9,15 +9,6 @@ const SSH_OPTIONS_WITH_VALUE = 'BbcDEeFIiJLlmOoPpQRSWw';
 const SSH_RE = /(?:^|\s)ssh\s+(.*)$/;
 // "[sudo] password for david:" or "david@host's password:"
 const PROMPT_USER_RES = [/password for ([\w.-]+)/i, /([\w.-]+)@[\w.-]+'s password/i];
-
-// A row plus the rows that wrap onto it, so a long command reads as one line.
-function logicalLine(buffer: IBuffer, row: number): string {
-  let text = buffer.getLine(row)?.translateToString(false) ?? '';
-  for (let next = row + 1; buffer.getLine(next)?.isWrapped; next++) {
-    text += buffer.getLine(next)?.translateToString(false) ?? '';
-  }
-  return text.trim();
-}
 
 // The host a command line connects to with ssh, if it runs ssh.
 function sshDestination(command: string): string | null {
@@ -31,28 +22,31 @@ function sshDestination(command: string): string | null {
 }
 
 // "[sudo] password for david:" reads the same on every server, so the key for
-// remembering an item adds where the prompt came from. SSH prompts
-// ("david@host's password:") name it themselves. Otherwise it's the nearest
-// shell prompt's user@host, or the ssh target when that shell prompt ran a
-// one-off `ssh host "sudo ..."`, since the local user@host says nothing about
-// which server is asking.
-export function readPrompt(term: Terminal | null): { prompt: string; key: string } {
+// remembering an item adds where the prompt came from. When the last command
+// Origin ran was a one-off `ssh host "sudo ..."`, that's the ssh host; it comes
+// from the command itself because screen text can be printed by anything.
+// SSH prompts ("david@host's password:") name the host themselves. Otherwise
+// it's the nearest shell prompt's user@host, such as a remote shell's prompt.
+export function readPrompt(
+  term: Terminal | null,
+  lastCommand: string | null
+): { prompt: string; key: string } {
   const buffer = term?.buffer.active;
   if (!buffer) return { prompt: '', key: '' };
   const cursorRow = buffer.baseY + buffer.cursorY;
   const prompt = buffer.getLine(cursorRow)?.translateToString(true).trim() ?? '';
   if (USER_HOST_RE.test(prompt)) return { prompt, key: prompt };
 
+  const destination = lastCommand ? sshDestination(lastCommand) : null;
+  if (destination) return { prompt, key: `ssh ${destination} ${prompt}` };
+
   let lines = 0;
   for (let row = cursorRow - 1; row >= 0 && lines < HOST_LOOKBACK_LINES; row--) {
-    if (buffer.getLine(row)?.isWrapped) continue;
+    const line = buffer.getLine(row);
+    if (line?.isWrapped) continue;
     lines++;
-    const line = logicalLine(buffer, row);
-    const userHost = line.match(USER_HOST_RE);
-    if (!userHost) continue;
-    const command = line.slice((userHost.index ?? 0) + userHost[0].length);
-    const destination = sshDestination(command);
-    return { prompt, key: destination ? `ssh ${destination} ${prompt}` : `${userHost[0]} ${prompt}` };
+    const userHost = line?.translateToString(true).match(USER_HOST_RE)?.[0];
+    if (userHost) return { prompt, key: `${userHost} ${prompt}` };
   }
   return { prompt, key: prompt };
 }

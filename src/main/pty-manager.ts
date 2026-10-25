@@ -101,7 +101,15 @@ function shellStartup(shell: string): { args: string[]; env: NodeJS.ProcessEnv }
 interface PtySession {
   id: string;
   process: pty.IPty;
+  // The terminal device, e.g. /dev/ttys012, looked up on first use.
+  tty?: string;
 }
+
+// sudo, ssh-askpass, getpass and friends turn echo off but keep line input
+// while reading a secret. Shells and ssh sessions use raw mode, which turns
+// both off, so the two cases are distinguishable.
+const ECHO_OFF_RE = /(^|\s)-echo(\s|$)/;
+const LINE_INPUT_RE = /(^|\s)icanon(\s|$)/;
 
 class PtyManager {
   private sessions: Map<string, PtySession> = new Map();
@@ -182,6 +190,24 @@ class PtyManager {
       return cwd;
     } catch {
       return null;
+    }
+  }
+
+  // Whether a program in this terminal is reading a secret right now, so
+  // input sent to it must not be saved to history.
+  async isReadingSecret(id: string): Promise<boolean> {
+    const session = this.sessions.get(id);
+    if (!session || os.platform() === 'win32') return false;
+    try {
+      if (!session.tty) {
+        const { stdout } = await execFileAsync('ps', ['-o', 'tty=', '-p', String(session.process.pid)]);
+        session.tty = `/dev/${stdout.trim()}`;
+      }
+      const deviceFlag = os.platform() === 'darwin' ? '-f' : '-F';
+      const { stdout } = await execFileAsync('stty', ['-a', deviceFlag, session.tty]);
+      return ECHO_OFF_RE.test(stdout) && LINE_INPUT_RE.test(stdout);
+    } catch {
+      return false;
     }
   }
 

@@ -35,6 +35,9 @@ const api = {
     ipcRenderer.send('pty:resize', { id, cols, rows });
   },
 
+  ptyIsReadingSecret: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke('pty:isReadingSecret', id),
+
   onPtyData: (callback: (payload: PtyDataPayload) => void): (() => void) =>
     subscribe('pty:data', callback),
 
@@ -84,6 +87,9 @@ const api = {
     promptKey: string
   ): Promise<OnePasswordResult<null>> =>
     ipcRenderer.invoke('op:fill', { ptyId, fill, promptKey }),
+
+  opRememberedTitle: (promptKey: string): Promise<string | null> =>
+    ipcRenderer.invoke('op:rememberedTitle', promptKey),
 
   opAutoFill: (ptyId: string, promptKey: string): Promise<OnePasswordResult<string | null>> =>
     ipcRenderer.invoke('op:autoFill', { ptyId, promptKey }),

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.10
+
+Security fixes from a review of the app.
+
+- 1Password fills need a keypress. At a prompt with a remembered item, the input reads "Press Enter to fill … from 1Password"; Enter fills it, typing enters a password yourself. Before, Origin filled automatically, so any program or server could print a fake prompt and receive the password. One-off `ssh host "sudo …"` prompts now take the host from the command Origin ran rather than from screen text.
+- The window can no longer navigate away from Origin, for example when a file is dropped on it. Any other page would have had the app's access to the shell and to 1Password fills. Only the app's own page can call the main process.
+- Web links in terminal output open in the default browser instead of an Origin window, and the window's renderer is now sandboxed with a strict Content-Security-Policy.
+- Clicking a link to an executable, script, installer, or link file shows it in Finder instead of running it.
+- Input sent while a program reads a secret with echo off (a password prompt Origin didn't recognize) is kept out of history.
+- Upgrade Electron to 44.9.3 for its security fixes, and apply non-breaking fixes for build-tool advisories.
+- Packaged builds load app code only from the app archive, hide DevTools, and refuse to start with Chromium remote-debugging switches.
+- 1Password item and field IDs from the window are validated before reaching the 1Password CLI.
+
 ## 0.1.9
 
 - Fill the right password from 1Password items that hold several. Origin used to always read an item's main `password` field, so an item like a server's account login with separate root and user passwords filled the wrong one. After you pick an item with more than one password field, Origin asks which, preselecting the field labelled with the prompt's user (`[sudo] password for david:` → `david`), and remembers the item and field.

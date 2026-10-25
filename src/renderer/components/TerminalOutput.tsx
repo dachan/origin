@@ -142,7 +142,9 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
 
     const fitAddon = new FitAddon();
     const searchAddon = new SearchAddon();
-    const webLinksAddon = new WebLinksAddon();
+    // Pass the URL to window.open so the main process can send it to the
+    // default browser; the addon's default opens a blank window first.
+    const webLinksAddon = new WebLinksAddon((_event, uri) => window.open(uri));
 
     term.loadAddon(fitAddon);
     term.loadAddon(searchAddon);

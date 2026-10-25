@@ -20,6 +20,7 @@ const CommandInput: React.FC = () => {
   const {
     ptyId,
     terminalRef,
+    lastCommandRef,
     history,
     historyIndex,
     setHistoryIndex,
@@ -246,6 +247,7 @@ const CommandInput: React.FC = () => {
   const onePassword = useOnePasswordFill({
     ptyId,
     terminalRef,
+    lastCommandRef,
     isPasswordMode,
     onFilled: handleOnePasswordFilled,
   });
@@ -261,6 +263,9 @@ const CommandInput: React.FC = () => {
       if (e.key === '\\' && e.metaKey) {
         e.preventDefault();
         onePassword.openPicker();
+      } else if (e.key === 'Enter' && passwordValue === '' && onePassword.offer) {
+        e.preventDefault();
+        onePassword.acceptOffer();
       } else if (e.key === 'Enter') {
         e.preventDefault();
         if (ptyId) {
@@ -370,7 +375,9 @@ const CommandInput: React.FC = () => {
               placeholder={
                 onePassword.isAutoFilling
                   ? 'Waiting for 1Password… (or type the password)'
-                  : 'Enter password, or ⌘\\ to fill from 1Password...'
+                  : onePassword.offer
+                    ? `Press Enter to fill ${onePassword.offer.title} from 1Password, or type the password`
+                    : 'Enter password, or ⌘\\ to fill from 1Password...'
               }
               autoComplete="current-password"
               spellCheck={false}

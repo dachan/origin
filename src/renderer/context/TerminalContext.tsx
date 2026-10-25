@@ -15,6 +15,8 @@ interface TerminalContextValue {
   ptyId: string | null;
   terminalRef: React.MutableRefObject<Terminal | null>;
   cwdHistoryRef: React.MutableRefObject<CwdHistoryEntry[]>;
+  // The last command run from the input or palette, not from passthrough.
+  lastCommandRef: React.MutableRefObject<string | null>;
   history: string[];
   stickyCommands: StickyCommand[];
   isPaletteOpen: boolean;
@@ -67,6 +69,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
   const [ptyId, setPtyId] = useState<string | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const cwdHistoryRef = useRef<CwdHistoryEntry[]>([]);
+  const lastCommandRef = useRef<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [stickyCommands, setStickyCommands] = useState<StickyCommand[]>([]);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
@@ -169,8 +172,17 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [ptyId, spawnPty]);
 
   const executeCommand = useCallback(
-    (command: string) => {
+    async (command: string) => {
       if (!ptyId) return;
+
+      // A password prompt Origin didn't recognize is still waiting for
+      // input: send what was typed, but keep it out of history. Checked
+      // before writing, since the program restores echo once it reads.
+      if (await window.electronAPI.ptyIsReadingSecret(ptyId)) {
+        window.electronAPI.ptyWrite(ptyId, command + '\n');
+        setHistoryIndex(-1);
+        return;
+      }
 
       // Snapshot current CWD and cursor line before writing to PTY
       const term = terminalRef.current;
@@ -190,6 +202,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Send to PTY
       window.electronAPI.ptyWrite(ptyId, KILL_LINE + command + '\n');
+      lastCommandRef.current = command;
 
       // Append to history
       window.electronAPI.historyAppend(command).catch(() => { /* best-effort */ });
@@ -284,6 +297,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       ptyId,
       terminalRef,
       cwdHistoryRef,
+      lastCommandRef,
       history,
       stickyCommands,
       isPaletteOpen,

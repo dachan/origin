@@ -2,6 +2,7 @@ import { clipboard, ipcMain, shell } from 'electron';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { isAppUrl } from './app-url';
 import { ptyManager } from './pty-manager';
 import { commandHistoryStore } from './persistence/command-history';
 import { stickyCommandsStore } from './persistence/sticky-commands';
@@ -20,15 +21,54 @@ import type {
 // In-flight 1Password auto-fills, by PTY.
 const pendingAutoFills = new Map<string, AbortController>();
 
+// Files that macOS runs, installs, or follows when opened, rather than showing
+// them in an app.
+const RUNNABLE_EXTENSIONS = new Set([
+  '.command', '.tool', '.terminal', '.sh', '.workflow', '.action', '.scpt', '.scptd',
+  '.jar', '.pkg', '.mpkg', '.mobileconfig', '.prefpane', '.saver', '.shortcut',
+  '.webloc', '.inetloc', '.fileloc', '.url',
+]);
+
+// A clicked file link may come from output Origin doesn't control, so a
+// click must not run anything: executables and runnable types count.
+async function isRunnable(filePath: string): Promise<boolean> {
+  if (RUNNABLE_EXTENSIONS.has(path.extname(filePath).toLowerCase())) return true;
+  try {
+    await fs.promises.access(filePath, fs.constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // "Server › root" names which of an item's passwords was filled.
 function fillTitle({ item, field }: OnePasswordFill): string {
   return field.label === 'password' ? item.title : `${item.title} › ${field.label}`;
 }
 
+// Only the app's own page may call into the main process. The window can't
+// navigate elsewhere, but if some other page ever ran with the preload it
+// still gets nothing.
+type HandleListener = Parameters<typeof ipcMain.handle>[1];
+type OnListener = Parameters<typeof ipcMain.on>[1];
+
+function handle(channel: string, listener: HandleListener): void {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (!isAppUrl(event.senderFrame?.url)) throw new Error(`Blocked ${channel}`);
+    return listener(event, ...args);
+  });
+}
+
+function on(channel: string, listener: OnListener): void {
+  ipcMain.on(channel, (event, ...args) => {
+    if (isAppUrl(event.senderFrame?.url)) listener(event, ...args);
+  });
+}
+
 export function registerIpcHandlers(): void {
   // --- PTY Channels ---
 
-  ipcMain.handle(
+  handle(
     'pty:spawn',
     async (event, { cols, rows }: { cols: number; rows: number }) => {
       const { id } = ptyManager.spawn(cols, rows);
@@ -48,14 +88,14 @@ export function registerIpcHandlers(): void {
     }
   );
 
-  ipcMain.on(
+  on(
     'pty:write',
     (_event, { id, data }: { id: string; data: string }) => {
       ptyManager.write(id, data);
     }
   );
 
-  ipcMain.on(
+  on(
     'pty:resize',
     (
       _event,
@@ -65,42 +105,46 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  handle('pty:isReadingSecret', async (_event, id: string) =>
+    ptyManager.isReadingSecret(id)
+  );
+
   // --- Persistence Channels ---
 
-  ipcMain.handle('history:load', async () => {
+  handle('history:load', async () => {
     return commandHistoryStore.load();
   });
 
-  ipcMain.handle('history:append', async (_event, command: string) => {
+  handle('history:append', async (_event, command: string) => {
     return commandHistoryStore.append(command);
   });
 
-  ipcMain.handle('history:remove', async (_event, command: string) => {
+  handle('history:remove', async (_event, command: string) => {
     return commandHistoryStore.remove(command);
   });
 
-  ipcMain.handle('history:clear', async () => {
+  handle('history:clear', async () => {
     return commandHistoryStore.clearAll();
   });
 
-  ipcMain.handle('sticky:load', async () => {
+  handle('sticky:load', async () => {
     return stickyCommandsStore.load();
   });
 
-  ipcMain.handle('sticky:save', async (_event, commands: StickyCommand[]) => {
+  handle('sticky:save', async (_event, commands: StickyCommand[]) => {
     return stickyCommandsStore.save(commands);
   });
 
   // --- Filesystem Channels ---
 
-  ipcMain.handle(
+  handle(
     'fs:getCwd',
     async (_event, ptyId: string): Promise<string | null> => {
       return ptyManager.getCwd(ptyId);
     }
   );
 
-  ipcMain.handle(
+  handle(
     'fs:resolveTokens',
     async (
       _event,
@@ -132,7 +176,7 @@ export function registerIpcHandlers(): void {
     }
   );
 
-  ipcMain.handle(
+  handle(
     'fs:stat',
     async (_event, filePath: string): Promise<FileStatSummary | null> => {
       try {
@@ -149,7 +193,7 @@ export function registerIpcHandlers(): void {
     }
   );
 
-  ipcMain.handle(
+  handle(
     'fs:openFile',
     async (_event, filePath: string): Promise<string> => {
       // Only open files under the user's home directory.
@@ -160,6 +204,11 @@ export function registerIpcHandlers(): void {
       if (resolved !== home && !resolved.startsWith(home + path.sep)) {
         return 'Blocked: path outside home directory';
       }
+      // Opening runs scripts and installers, so show those in Finder instead.
+      if (await isRunnable(resolved)) {
+        shell.showItemInFolder(resolved);
+        return '';
+      }
       return shell.openPath(resolved);
     }
   );
@@ -168,19 +217,19 @@ export function registerIpcHandlers(): void {
   // Passwords go from `op` straight to the PTY. The renderer only learns
   // whether it worked and which item was used.
 
-  ipcMain.handle(
+  handle(
     'op:listItems',
     async (_event, promptKey: string): Promise<OnePasswordResult<OnePasswordItemList>> =>
       onePassword.listItems(promptKey)
   );
 
-  ipcMain.handle(
+  handle(
     'op:listFields',
     async (_event, item: OnePasswordItem): Promise<OnePasswordResult<OnePasswordField[]>> =>
       onePassword.listFields(item)
   );
 
-  ipcMain.handle(
+  handle(
     'op:fill',
     async (
       _event,
@@ -193,9 +242,20 @@ export function registerIpcHandlers(): void {
     }
   );
 
-  // Fills the item remembered for this prompt, if any. Resolves to its title,
-  // or null when nothing is remembered or the renderer cancelled.
-  ipcMain.handle(
+  // Names the item and field remembered for this prompt, so the renderer can
+  // offer it; reads nothing from 1Password.
+  handle(
+    'op:rememberedTitle',
+    async (_event, promptKey: string): Promise<string | null> => {
+      const fill = await onePassword.rememberedFor(promptKey);
+      return fill ? fillTitle(fill) : null;
+    }
+  );
+
+  // Fills the item remembered for this prompt, if any, after the user accepts
+  // the offer. Resolves to its title, or null when nothing is remembered or
+  // the renderer cancelled.
+  handle(
     'op:autoFill',
     async (
       _event,
@@ -218,11 +278,11 @@ export function registerIpcHandlers(): void {
   );
 
   // The user started typing the password themselves, or left the prompt.
-  ipcMain.on('op:cancelAutoFill', (_event, ptyId: string) => {
+  on('op:cancelAutoFill', (_event, ptyId: string) => {
     pendingAutoFills.get(ptyId)?.abort();
   });
 
-  ipcMain.on('clipboard:write', (_event, text: unknown) => {
+  on('clipboard:write', (_event, text: unknown) => {
     if (typeof text === 'string' && text.length > 0) {
       clipboard.writeText(text);
     }

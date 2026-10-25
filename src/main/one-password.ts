@@ -22,6 +22,17 @@ const OP_TIMEOUT_MS = 120_000;
 
 const CATEGORIES = 'Login,Password,Server';
 
+// 1Password IDs are letters, digits, '_' and '-'. Item and field IDs come back
+// from the renderer, so check them before they become op arguments or part of
+// an op:// reference.
+const OP_ID_RE = /^[A-Za-z0-9_][A-Za-z0-9_-]*$/;
+
+function checkIds(...ids: string[]): void {
+  if (!ids.every((id) => typeof id === 'string' && OP_ID_RE.test(id))) {
+    throw new Error('Invalid 1Password item');
+  }
+}
+
 interface OpAccount {
   url: string;
   account_uuid: string;
@@ -140,6 +151,7 @@ async function listItems(promptKey: string): Promise<OnePasswordItemList> {
 // The item's concealed fields, without their values. op's JSON includes the
 // values, so this output must stay in the main process.
 async function listFields(item: OnePasswordItem): Promise<OnePasswordField[]> {
+  checkIds(item.id, item.vaultId, item.accountId);
   const stdout = await runOp([
     'item', 'get', item.id,
     '--vault', item.vaultId,
@@ -170,6 +182,7 @@ async function readPassword(
   signal?: AbortSignal
 ): Promise<string> {
   const { item, field } = fill;
+  checkIds(item.id, item.vaultId, item.accountId, field.id);
   const secret = await runOp([
     'read', '--no-newline',
     '--account', item.accountId,
