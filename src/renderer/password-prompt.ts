@@ -9,6 +9,20 @@ const SSH_OPTIONS_WITH_VALUE = 'BbcDEeFIiJLlmOoPpQRSWw';
 const SSH_RE = /(?:^|\s)ssh\s+(.*)$/;
 // "[sudo] password for david:" or "david@host's password:"
 const PROMPT_USER_RES = [/password for ([\w.-]+)/i, /([\w.-]+)@[\w.-]+'s password/i];
+// The prompt must end the cursor line, so output that merely mentions a
+// password ("password: hunter2" in a log or a file) isn't taken for one.
+const PASSWORD_PROMPT_RE = /(password|passphrase)[^:]*:$/i;
+
+// The text of the line the cursor is on, trimmed.
+export function cursorLine(term: Terminal | null): string {
+  const buffer = term?.buffer.active;
+  if (!buffer) return '';
+  return buffer.getLine(buffer.baseY + buffer.cursorY)?.translateToString(true).trim() ?? '';
+}
+
+export function isPasswordPrompt(line: string): boolean {
+  return PASSWORD_PROMPT_RE.test(line);
+}
 
 // The host a command line connects to with ssh, if it runs ssh.
 function sshDestination(command: string): string | null {
@@ -34,7 +48,7 @@ export function readPrompt(
   const buffer = term?.buffer.active;
   if (!buffer) return { prompt: '', key: '' };
   const cursorRow = buffer.baseY + buffer.cursorY;
-  const prompt = buffer.getLine(cursorRow)?.translateToString(true).trim() ?? '';
+  const prompt = cursorLine(term);
   if (USER_HOST_RE.test(prompt)) return { prompt, key: prompt };
 
   const destination = lastCommand ? sshDestination(lastCommand) : null;

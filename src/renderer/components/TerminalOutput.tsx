@@ -34,7 +34,7 @@ const SEARCH_FIND_OPTIONS = {
 
 const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { ptyId, terminalRef, isRawMode, isPassthroughMode, togglePassthroughMode, cwdHistoryRef, isSearchOpen, setIsSearchOpen, fontSize, setFontSize } = useTerminal();
+  const { ptyId, terminalRef, isRawMode, isPassthroughMode, togglePassthroughMode, cwdHistoryRef, isSearchOpen, setIsSearchOpen, isPaletteOpen, fontSize, setFontSize } = useTerminal();
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
   const ptyIdRef = useRef<string | null>(null);
@@ -47,10 +47,10 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
     searchAddonRef.current?.clearDecorations();
   }, [setIsSearchOpen]);
 
+  // Escape is handled on the whole bar, so it still closes after a click on
+  // one of its buttons.
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      closeSearch();
-    } else if (e.key === 'Enter') {
+    if (e.key === 'Enter') {
       e.preventDefault();
       if (e.shiftKey) {
         searchAddonRef.current?.findPrevious(searchQuery, SEARCH_FIND_OPTIONS);
@@ -58,7 +58,7 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
         searchAddonRef.current?.findNext(searchQuery, SEARCH_FIND_OPTIONS);
       }
     }
-  }, [searchQuery, closeSearch]);
+  }, [searchQuery]);
 
   // Cmd+F to open search; also handles 'terminal:search' custom event
   useEffect(() => {
@@ -229,14 +229,20 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
         window.electronAPI.ptyWrite(ptyId, data);
       });
 
-      // Focus the terminal
-      term.focus();
-
       return () => {
         disposable.dispose();
       };
     }
   }, [isRawMode, isPassthroughMode, ptyId]);
+
+  // Full-screen apps and passthrough mode read keys from the terminal itself,
+  // which nothing else refocuses, so hand focus back whenever the palette or
+  // Find bar isn't holding it.
+  useEffect(() => {
+    if ((isRawMode || isPassthroughMode) && !isPaletteOpen && !isSearchOpen) {
+      terminalRef.current?.focus();
+    }
+  }, [isRawMode, isPassthroughMode, isPaletteOpen, isSearchOpen, terminalRef]);
 
   // Update terminal font size when it changes
   useEffect(() => {
@@ -274,7 +280,12 @@ const TerminalOutput: React.FC<{ children?: React.ReactNode }> = ({ children }) 
   return (
     <div className="terminal-wrapper">
       {isSearchOpen && (
-        <div className="terminal-search-bar">
+        <div
+          className="terminal-search-bar"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') closeSearch();
+          }}
+        >
           <input
             ref={searchInputRef}
             className="terminal-search-input"

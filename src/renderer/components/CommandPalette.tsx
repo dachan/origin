@@ -102,12 +102,17 @@ const CommandPalette: React.FC = () => {
     [executeCommand, togglePalette]
   );
 
+  // Handles keys from anywhere in the palette, so they keep working after a
+  // click moves focus off the search field. The pin form handles its own.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (pinningCommand !== null) return;
       if (e.key === 'Escape') {
         togglePalette();
         return;
       }
+      // Enter on a focused button presses that button.
+      if (e.target instanceof HTMLButtonElement) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedIndex((prev) =>
@@ -125,7 +130,7 @@ const CommandPalette: React.FC = () => {
         }
       }
     },
-    [filteredItems, selectedIndex, handleSelect, togglePalette]
+    [pinningCommand, filteredItems, selectedIndex, handleSelect, togglePalette]
   );
 
   const handlePin = useCallback(
@@ -144,11 +149,13 @@ const CommandPalette: React.FC = () => {
     }
     setPinningCommand(null);
     setPinLabel('');
+    inputRef.current?.focus();
   }, [pinningCommand, pinLabel, addStickyCommand]);
 
   const handlePinCancel = useCallback(() => {
     setPinningCommand(null);
     setPinLabel('');
+    inputRef.current?.focus();
   }, []);
 
   const handleUnpin = useCallback(
@@ -173,7 +180,14 @@ const CommandPalette: React.FC = () => {
 
   return (
     <div className="palette-overlay" onClick={togglePalette}>
-      <div className="palette-modal" onClick={(e) => e.stopPropagation()}>
+      {/* tabIndex keeps focus inside the modal when a click lands on a
+          non-focusable part of it, so its key handler still runs. */}
+      <div
+        className="palette-modal"
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+      >
         <div className="palette-header">
           <input
             ref={inputRef}
@@ -184,7 +198,6 @@ const CommandPalette: React.FC = () => {
               setSearchQuery(e.target.value);
               setSelectedIndex(0);
             }}
-            onKeyDown={handleKeyDown}
             placeholder="Search commands..."
           />
           {history.length > 0 && (

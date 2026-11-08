@@ -1,12 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { Terminal } from '@xterm/xterm';
 import { showToast } from '../components/Toast';
-import { readPrompt } from '../password-prompt';
+import { isPasswordPrompt, readPrompt } from '../password-prompt';
 
-// Stricter than the detector in TerminalContext: the prompt must end the
-// cursor line, so output that merely mentions a password doesn't call
-// 1Password.
-const CURSOR_PROMPT_RE = /(password|passphrase)[^:]*:$/i;
 // A second prompt this soon after filling the same one means the password
 // was probably rejected ("Sorry, try again"); don't burn another attempt.
 const RETRY_WINDOW_MS = 30_000;
@@ -63,7 +59,7 @@ export function useOnePasswordFill({
     // Wait for xterm to draw the prompt line before reading it.
     const timer = setTimeout(() => {
       const { prompt, key } = readPrompt(terminalRef.current, lastCommandRef.current);
-      if (!CURSOR_PROMPT_RE.test(prompt)) return;
+      if (!isPasswordPrompt(prompt)) return;
       const last = lastFillRef.current;
       if (last && last.key === key && Date.now() - last.at < RETRY_WINDOW_MS) return;
 

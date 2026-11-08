@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.11
+
+- Switch to the masked password input only when the line the cursor is on ends in a password prompt. Before, any output mentioning "password" did it, such as `echo "password: …"`, a log line, or a file viewed in `less`. Prompts inside full-screen apps and passthrough mode are left alone, since those take keystrokes directly.
+- Tab completion fills the input. Origin used to send the command to the shell for completion but keep the input unchanged, so Enter ran the uncompleted text. Multi-line input is no longer sent on Tab, since its first line would run.
+- Up and Down walk command history one entry per press. Before, each step took two presses because the cursor had to be at the very start. Inside a multi-line command they still move between its lines.
+- Keys keep working after the palette or Find bar closes. In `vim` or `less` the terminal gets focus back, so keys no longer go nowhere until you click. At a password prompt the masked input gets it back. In the palette, Escape and the arrow keys work after clicking a button or cancelling the star form. Escape closes the Find bar after clicking one of its buttons.
+
 ## 0.1.10
 
 Security fixes from a review of the app.

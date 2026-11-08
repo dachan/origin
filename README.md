@@ -30,9 +30,11 @@ A modern terminal replacement built with Electron, xterm.js, and React. Origin e
 ### Command Input
 - Multi-line input with auto-expanding height
 - Autocomplete from command history (prefix-matched, top 10 results)
+- Tab completes in your shell and fills the completed command into the input
+- Up and Down walk command history from the first and last line of the input
 - Persistent command history across sessions
 - Syncs with shell history (`~/.zsh_history` / `~/.bash_history`)
-- **Password masking** — automatically detects password prompts (`sudo`, `ssh`, `git`, etc.) and switches to a masked input field; passwords are never saved to history. Input sent while a program is reading a secret with echo off (a prompt Origin didn't recognize) is kept out of history too
+- **Password masking** — automatically detects password prompts (`sudo`, `ssh`, `git`, etc.) when the line the cursor is on ends in one, and switches to a masked input field; passwords are never saved to history. Input sent while a program is reading a secret with echo off (a prompt Origin didn't recognize) is kept out of history too
 - **Fill from 1Password** — at a password prompt Origin offers the 1Password password you used last time for that prompt and server; press **Enter** to fill it (after Touch ID), or type the password instead. Nothing is filled without that keypress, since any program can print text that looks like a password prompt. If nothing is remembered yet, a picker opens to choose an item; when the item holds several passwords (say a server's root and user passwords), pick which one, with the field named after the prompt's user preselected. Origin remembers the choice. Press Escape to type the password yourself instead, or **Cmd+\\** (or the key button) to open the picker again. Works for remote prompts over SSH too, including one-off `ssh host "sudo …"` commands, which are remembered per ssh host. Needs the [1Password CLI](https://developer.1password.com/docs/cli/get-started/) (`brew install 1password-cli`) with "Integrate with 1Password CLI" turned on in 1Password.
 
 ### Terminal Search

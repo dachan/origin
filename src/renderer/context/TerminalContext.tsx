@@ -10,6 +10,7 @@ import React, {
 import type { Terminal } from '@xterm/xterm';
 import type { StickyCommand } from '../types/commands';
 import type { CwdHistoryEntry } from '../terminal-file-link-provider';
+import { cursorLine, isPasswordPrompt } from '../password-prompt';
 
 interface TerminalContextValue {
   ptyId: string | null;
@@ -44,8 +45,6 @@ interface TerminalContextValue {
 
 const TerminalContext = createContext<TerminalContextValue | null>(null);
 
-const PASSWORD_PROMPT_RE = /password[\s:!?]|passphrase[\s:]/i;
-
 // Ctrl+U (kill-line): clears anything already buffered on the shell's input
 // line (e.g. from tab completion) so the written command runs on its own.
 export const KILL_LINE = '\x15';
@@ -77,6 +76,9 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isRawMode, setIsRawMode] = useState(false);
   const [isPassthroughMode, setIsPassthroughMode] = useState(false);
   const [isPasswordMode, setIsPasswordMode] = useState(false);
+  // Read by the PTY data handler, which shouldn't resubscribe on toggle.
+  const isPassthroughRef = useRef(false);
+  isPassthroughRef.current = isPassthroughMode;
 
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [fontSize, setFontSizeState] = useState(() => {
@@ -138,8 +140,16 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
     const unsubData = window.electronAPI.onPtyData(({ id, data }) => {
       if (id !== ptyId) return;
 
-      // Write to terminal
-      terminalRef.current?.write(data);
+      // Detect a password prompt once xterm has drawn the data, from the
+      // line the cursor sits on. Full-screen apps and passthrough mode take
+      // keystrokes directly, so a prompt there needs no masked input.
+      const term = terminalRef.current;
+      if (term) {
+        term.write(data, () => {
+          if (term.buffer.active.type === 'alternate' || isPassthroughRef.current) return;
+          if (isPasswordPrompt(cursorLine(term))) setIsPasswordMode(true);
+        });
+      }
 
       // Detect alternate screen buffer (raw mode)
       if (data.includes('\x1b[?1049h')) {
@@ -147,11 +157,6 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       if (data.includes('\x1b[?1049l')) {
         setIsRawMode(false);
-      }
-
-      // Detect password prompts
-      if (PASSWORD_PROMPT_RE.test(data)) {
-        setIsPasswordMode(true);
       }
     });
 

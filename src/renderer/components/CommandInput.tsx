@@ -1,11 +1,11 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { useTerminal, KILL_LINE } from '../context/TerminalContext';
+import { useTerminal } from '../context/TerminalContext';
 import Autocomplete from './Autocomplete';
 import OnePasswordPicker from './OnePasswordPicker';
 import Prompt from './Prompt';
-import { showToast } from './Toast';
 import { CommandLineIcon, KeyIcon } from './icons';
 import { useOnePasswordFill } from '../hooks/useOnePasswordFill';
+import { completeInShell } from '../shell-completion';
 
 const CommandInput: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -16,6 +16,7 @@ const CommandInput: React.FC = () => {
   const [autocompleteIndex, setAutocompleteIndex] = useState(-1);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const lastEscRef = useRef<number>(0);
+  const isCompletingRef = useRef(false);
 
   const {
     ptyId,
@@ -112,9 +113,11 @@ const CommandInput: React.FC = () => {
       }
 
       // --- History navigation (when autocomplete is NOT showing) ---
+      // Up and Down walk history from the first and last line; inside a
+      // multi-line command they move between its lines.
       if (e.key === 'ArrowUp' && !showAutocomplete) {
         const textarea = textareaRef.current;
-        if (textarea && textarea.selectionStart === 0) {
+        if (textarea && !textarea.value.slice(0, textarea.selectionStart).includes('\n')) {
           e.preventDefault();
           const newIndex =
             historyIndex < history.length - 1
@@ -130,7 +133,7 @@ const CommandInput: React.FC = () => {
 
       if (e.key === 'ArrowDown' && !showAutocomplete) {
         const textarea = textareaRef.current;
-        if (textarea && textarea.selectionStart === textarea.value.length) {
+        if (textarea && !textarea.value.slice(textarea.selectionEnd).includes('\n')) {
           e.preventDefault();
           const newIndex = historyIndex > 0 ? historyIndex - 1 : -1;
           setHistoryIndex(newIndex);
@@ -194,15 +197,23 @@ const CommandInput: React.FC = () => {
         return;
       }
 
-      // --- Tab without autocomplete = send tab to PTY for shell completion ---
+      // --- Tab without autocomplete = complete in the shell ---
       if (e.key === 'Tab' && !showAutocomplete) {
         e.preventDefault();
-        if (ptyId && inputValue.trim()) {
-          // Kill any previously buffered line first so repeated Tabs (or a
-          // following Enter, which also kills the line) stay in sync.
-          window.electronAPI.ptyWrite(ptyId, KILL_LINE + inputValue + '\t');
-          showToast('Tab completing...');
-        }
+        const term = terminalRef.current;
+        // A newline would run the first line, so multi-line input isn't sent.
+        if (!ptyId || !term || !inputValue.trim() || inputValue.includes('\n')) return;
+        if (isCompletingRef.current) return;
+        isCompletingRef.current = true;
+        const sent = inputValue;
+        completeInShell(term, ptyId, sent)
+          .then((completed) => {
+            // Leave the input alone if the user kept typing meanwhile.
+            if (completed) setInputValue((current) => (current === sent ? completed : current));
+          })
+          .finally(() => {
+            isCompletingRef.current = false;
+          });
       }
     },
     [
@@ -211,6 +222,7 @@ const CommandInput: React.FC = () => {
       autocompleteIndex,
       inputValue,
       ptyId,
+      terminalRef,
       history,
       historyIndex,
       executeCommand,
@@ -290,12 +302,13 @@ const CommandInput: React.FC = () => {
     [ptyId, passwordValue, setIsPasswordMode, onePassword]
   );
 
-  // Auto-focus password input when entering password mode
+  // Focus the password input on entering password mode, and again when the
+  // palette or Find bar closes over it.
   useEffect(() => {
-    if (isPasswordMode) {
+    if (isPasswordMode && !isPaletteOpen && !isSearchOpen) {
       passwordInputRef.current?.focus();
     }
-  }, [isPasswordMode]);
+  }, [isPasswordMode, isPaletteOpen, isSearchOpen]);
 
   // Auto-focus the textarea
   useEffect(() => {

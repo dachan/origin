@@ -21,6 +21,8 @@
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   align-self: flex-start;
   animation: palette-modal-in 0.15s ease;
+  /* Focusable only to keep keys inside the palette; not a control. */
+  outline: none;
 }
 
 @keyframes palette-overlay-in {
